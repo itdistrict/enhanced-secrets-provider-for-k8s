@@ -23,6 +23,7 @@ const (
 	MinRefreshInterval        = time.Second
 	DefaultRefreshIntervalStr = "5m"
 	DefaultSanitizeEnabled    = true
+	DefaultRetrievalType 	  = "Single"
 )
 
 var DefaultRefreshInterval, _ = time.ParseDuration(DefaultRefreshIntervalStr)
@@ -37,6 +38,7 @@ type Config struct {
 	StoreType              string
 	SecretsRefreshInterval time.Duration
 	SanitizeEnabled        bool
+	RetrievalType		   string
 }
 
 type annotationType int
@@ -59,6 +61,7 @@ const (
 	JwtTokenPath          = "conjur.org/jwt-token-path"
 	ContainerModeKey      = "conjur.org/container-mode"
 	SecretsDestinationKey = "conjur.org/secrets-destination"
+	RetrievalTypeKey      = "conjur.org/retrieval-type"
 	k8sSecretsKey         = "conjur.org/k8s-secrets"
 	retryCountLimitKey    = "conjur.org/retry-count-limit"
 	retryIntervalSecKey   = "conjur.org/retry-interval-sec"
@@ -90,6 +93,7 @@ var secretsProviderAnnotations = map[string]annotationRestraints{
 	debugLoggingKey:           {TYPEBOOL, []string{}},
 	logTracesKey:              {TYPEBOOL, []string{}},
 	jaegerCollectorUrl:        {TYPESTRING, []string{}},
+	RetrievalTypeKey:		   {TYPESTRING, []string{}},
 }
 
 // Define supported annotation key prefixes for Push to File config, as well as value restraints for each.
@@ -115,6 +119,7 @@ var validEnvVars = []string{
 	"JWT_TOKEN_PATH",
 	"REMOVE_DELETED_SECRETS",
 	"CONTAINER_MODE",
+	"RETRIEVAL_TYPE",
 }
 
 // ValidateAnnotations confirms that the provided annotations are properly
@@ -192,9 +197,16 @@ func ValidateSecretsProviderSettings(envAndAnnots map[string]string) ([]error, [
 	default:
 		errorList = append(errorList, fmt.Errorf(messages.CSPFK043E, SecretsDestinationKey, annotStoreType, []string{File, K8s}))
 	}
+
+	annotRetrievalType := envAndAnnots[RetrievalTypeKey]
+	envRetrievalType := envAndAnnots["RETRIEVAL_TYPE"]
+	if annotRetrievalType != "" && envRetrievalType != "" {
+		infoList = append(infoList, fmt.Errorf(messages.CSPFK012I, "RetrievalType", "RETRIEVAL_TYPE", RetrievalTypeKey))
+	}
+
 	envK8sSecretsStr := envAndAnnots["K8S_SECRETS"]
 	annotK8sSecretsStr := envAndAnnots[k8sSecretsKey]
-	if storeType == "k8s_secrets" {
+	if storeType == "k8s_secrets" && (annotRetrievalType != "Full" || envRetrievalType != "Full"){
 		if envK8sSecretsStr == "" && annotK8sSecretsStr == "" {
 			errorList = append(errorList, errors.New(messages.CSPFK048E))
 		} else if envK8sSecretsStr != "" && annotK8sSecretsStr != "" {
@@ -232,19 +244,29 @@ func NewConfig(settings map[string]string) *Config {
 	if storeType == "" {
 		storeType = settings["SECRETS_DESTINATION"]
 	}
-
+	retrievalType := settings[RetrievalTypeKey]
+	if retrievalType == "" {
+		retrievalType = settings["RETRIEVAL_TYPE"]
+	}
+	if retrievalType == "" {
+		retrievalType = DefaultRetrievalType
+	}
 	k8sSecretsArr := []string{}
-	if storeType != "file" {
-		k8sSecretsStr := settings[k8sSecretsKey]
-		if k8sSecretsStr != "" {
-			k8sSecretsStr := strings.ReplaceAll(k8sSecretsStr, "- ", "")
-			k8sSecretsArr = strings.Split(k8sSecretsStr, "\n")
-			k8sSecretsArr = k8sSecretsArr[:len(k8sSecretsArr)-1]
-		} else {
-			k8sSecretsStr = settings["K8S_SECRETS"]
-			k8sSecretsStr = strings.ReplaceAll(k8sSecretsStr, " ", "")
-			k8sSecretsArr = strings.Split(k8sSecretsStr, ",")
+	if retrievalType == "Single" || retrievalType == "Regex"{		
+		if storeType != "file" {
+			k8sSecretsStr := settings[k8sSecretsKey]
+			if k8sSecretsStr != "" {
+				k8sSecretsStr := strings.ReplaceAll(k8sSecretsStr, "- ", "")
+				k8sSecretsArr = strings.Split(k8sSecretsStr, "\n")
+				k8sSecretsArr = k8sSecretsArr[:len(k8sSecretsArr)-1]
+			} else {
+				k8sSecretsStr = settings["K8S_SECRETS"]
+				k8sSecretsStr = strings.ReplaceAll(k8sSecretsStr, " ", "")
+				k8sSecretsArr = strings.Split(k8sSecretsStr, ",")
+			}
 		}
+	}else if retrievalType == "Full"{
+		k8sSecretsArr = append(k8sSecretsArr,"")
 	}
 
 	retryCountLimitStr := settings[retryCountLimitKey]
@@ -282,6 +304,7 @@ func NewConfig(settings map[string]string) *Config {
 		StoreType:              storeType,
 		SecretsRefreshInterval: refreshInterval,
 		SanitizeEnabled:        sanitizeEnable,
+		RetrievalType:			retrievalType,
 	}
 }
 

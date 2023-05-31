@@ -208,6 +208,7 @@ func secretsProvider(
 		CommonProviderConfig: secrets.CommonProviderConfig{
 			StoreType:       secretsConfig.StoreType,
 			SanitizeEnabled: secretsConfig.SanitizeEnabled,
+			RetrievalType:		secretsConfig.RetrievalType,
 		},
 		K8sProviderConfig: k8sSecretsStorage.K8sProviderConfig{
 			PodNamespace:       secretsConfig.PodNamespace,

@@ -1,3 +1,30 @@
+# Updated Version of Secrets Provider
+This version provides two new feature in regards to the CyberArk provided one. Our base is a fork from 31st of May 2023. We have added error tolerance: If the batch retrieval triggers an error, a single retrieval is triggered. If an error is detected in a single retrieval, the error message is added as a secret value to facilitate troubleshooting.
+# How to use it:
+An image is already available on: https://hub.docker.com/r/itdistrict/secrets-provider-for-k8s
+
+You can also build your own image:
+1) clone/download this repo.
+2) build the image from the base repo: docker build -t custom_secrets_provider --target secrets-provider --platform linux/amd64 .
+3) tag the image and upload it to your repository.
+4) use it :-)
+
+# What's new?
+There is a new parameter available. It's calles RETRIEVAL_TYPE and allows to use Regex or a Full scan of secrets on all namespaces or just the current namespace. RETRIEVAL_TYPE only available in K8s-secrets mode.
+
+How to use it:
+provide the retrieval type as global environmen variable or as an annotation:
+RETRIEVAL_TYPE vs. conjur.org/retrieval-type
+
+The possible values:
+Single: Uses the k8s_secrets to fetch secrets as usual. Fault tolerance always applies.
+Regex: Uses the k8s_secrets as a regex expression to validate whether the secret should be synced or not.
+Full: All secrets found in all namespaces (cluster-role needed) or just the current namespace (cluster-role missing), will be synced when a conjur-map is available.
+
+# What's next?
+We are happy to get feedback on this enhancement. We will also update some tests and the documentation.
+
+
 # Table of Contents
 
 - [Table of Contents](#table-of-contents)

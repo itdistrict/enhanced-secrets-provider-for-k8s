@@ -24,6 +24,7 @@ const (
 type CommonProviderConfig struct {
 	StoreType       string
 	SanitizeEnabled bool
+	RetrievalType   string
 }
 
 // ProviderConfig provides the configuration necessary to create a secrets
@@ -60,6 +61,7 @@ func NewProviderForType(
 			secretsRetrieverFunc,
 			providerConfig.CommonProviderConfig.SanitizeEnabled,
 			providerConfig.K8sProviderConfig,
+			providerConfig.CommonProviderConfig.RetrievalType,
 		)
 		return provider.Provide, nil
 	case config.File:

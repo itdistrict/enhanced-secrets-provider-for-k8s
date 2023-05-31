@@ -43,8 +43,9 @@ type k8sSecretsState struct {
 }
 
 type k8sAccessDeps struct {
-	retrieveSecret k8sClient.RetrieveK8sSecretFunc
-	updateSecret   k8sClient.UpdateK8sSecretFunc
+	retrieveSecret  		k8sClient.RetrieveK8sSecretFunc
+	updateSecret   			k8sClient.UpdateK8sSecretFunc
+	retrieveSecretsList		k8sClient.RetrieveSecretsListFunc
 }
 
 type conjurAccessDeps struct {
@@ -83,6 +84,7 @@ type K8sProvider struct {
 	secretsState       k8sSecretsState
 	traceContext       context.Context
 	sanitizeEnabled    bool
+	retrievalType	   string
 	//prevSecretsChecksums maps a k8s secret name to a sha256 checksum of the
 	// corresponding secret content. This is used to detect changes in
 	// secret content.
@@ -101,12 +103,14 @@ func NewProvider(
 	retrieveConjurSecrets conjur.RetrieveSecretsFunc,
 	sanitizeEnabled bool,
 	config K8sProviderConfig,
+	RetrievalType string,
 ) K8sProvider {
 	return newProvider(
 		k8sProviderDeps{
 			k8s: k8sAccessDeps{
 				k8sClient.RetrieveK8sSecret,
 				k8sClient.UpdateK8sSecret,
+				k8sClient.RetrieveSecretsList,
 			},
 			conjur: conjurAccessDeps{
 				retrieveConjurSecrets,
@@ -121,7 +125,8 @@ func NewProvider(
 		},
 		sanitizeEnabled,
 		config,
-		traceContext)
+		traceContext,
+		RetrievalType)
 }
 
 // newProvider creates a new secret provider for K8s Secrets mode
@@ -132,6 +137,7 @@ func newProvider(
 	sanitizeEnabled bool,
 	config K8sProviderConfig,
 	traceContext context.Context,
+	RetrievalType string,
 ) K8sProvider {
 	return K8sProvider{
 		k8s:                providerDeps.k8s,
@@ -140,6 +146,7 @@ func newProvider(
 		podNamespace:       config.PodNamespace,
 		requiredK8sSecrets: config.RequiredK8sSecrets,
 		sanitizeEnabled:    sanitizeEnabled,
+		retrievalType:		RetrievalType,
 		secretsState: k8sSecretsState{
 			originalK8sSecrets: map[string]*v1.Secret{},
 			updateDestinations: map[string][]updateDestination{},
@@ -209,7 +216,16 @@ func (p K8sProvider) removeDeletedSecrets(tr trace.Tracer) error {
 func (p K8sProvider) retrieveRequiredK8sSecrets(tracer trace.Tracer) error {
 	spanCtx, span := tracer.Start(p.traceContext, "Gather required K8s Secrets")
 	defer span.End()
-
+	p.log.info("RetrievalType: '%s'",p.retrievalType)
+	if p.retrievalType != "Single"{
+		requiredK8sSecrets,err := p.k8s.retrieveSecretsList(p.requiredK8sSecrets,config.ConjurMapKey,p.podNamespace)
+		if err != nil {
+			// Error messages returned from K8s should be printed only in debug mode
+			p.log.debug(messages.CSPFK004D, err.Error())
+			return p.log.recordedError(messages.CSPFK020E)
+		}
+		p.requiredK8sSecrets = requiredK8sSecrets
+	}
 	for _, k8sSecretName := range p.requiredK8sSecrets {
 		_, childSpan := tracer.Start(spanCtx, "Retrieve K8s Secret")
 		defer childSpan.End()
@@ -219,6 +235,7 @@ func (p K8sProvider) retrieveRequiredK8sSecrets(tracer trace.Tracer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 

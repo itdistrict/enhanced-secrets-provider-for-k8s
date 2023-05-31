@@ -88,12 +88,23 @@ func retrieveConjurSecrets(accessToken []byte, variableIDs []string) (map[string
 	}
 
 	retrievedSecretsByFullIDs, err := conjurClient.RetrieveBatchSecretsSafe(variableIDs)
+	var retrievedSecrets = map[string][]byte{}
 	if err != nil {
-		return nil, err
+		log.Info(err.Error())
+		// Fetch one by one, if error then empty
+		for _,variable := range variableIDs{
+			retrievedSecretByID, err := conjurClient.RetrieveSecret(variable)
+			if err != nil {
+				log.Info(err.Error())
+				retrievedSecrets[variable] = []byte(err.Error())
+			}else {
+				retrievedSecrets[variable] = retrievedSecretByID
+			}
+		}
+		return retrievedSecrets,nil
 	}
 
 	// Normalise secret IDs from batch secrets back to <variable_id>
-	var retrievedSecrets = map[string][]byte{}
 	for id, secret := range retrievedSecretsByFullIDs {
 		retrievedSecrets[normaliseVariableId(id)] = secret
 		delete(retrievedSecretsByFullIDs, id)
