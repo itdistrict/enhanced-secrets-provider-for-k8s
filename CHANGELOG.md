@@ -6,11 +6,86 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.7.5] - 2025-09-09
+
+### Changed
+- Updated documentation to align with Conjur Enterprise name change to Secrets Manager. (CNJR-10982)
+
+## [1.7.4] - 2025-04-01
+
+### Security
+- Upgrade Go dependencies
+
+## [1.7.3] - 2025-01-10
+
+### Security
+- Upgrade multiple dependencies
+
+## [1.7.2] - 2024-12-30
+
+### Security
+- Upgrade golang.org/x/net to 0.33.0 to address CVE-2024-45338
+
+## [1.7.1] - 2024-12-04
+
+### Fixed
+- The sentinel file is updated correctly when multiple K8s secrets are defined so the
+  liveness probe container restart behaves as expected in K8s secrets mode (CNJR-7253)
+
+## [1.7.0] - 2024-11-07
+
+### Added
+- Added `properties` file template (CNJR-6964,
+  [cyberark/secrets-provider-for-k8s#548](https://github.com/cyberark/secrets-provider-for-k8s/pull/548))
+- Support fetching all secrets available to host (CNJR-6716)
+- Updated Go to 1.23
+
+## [1.6.5] - 2024-07-24
+
+### Security
+- Upgrade golang.org/x/net to v0.24.0 (CONJSE-1863)
+
+## [1.6.4] - 2024-04-08
+
+### Changed
+- Testing and CI improvements (CNJR-4550)
+
+## [1.6.3] - 2024-03-21
+
+### Changed
+- Use updated RedHat preflight scan tool v1.9.1 (CNJR-3914)
+- Updated Go to 1.22 (CONJSE-1842)
+
+## [1.6.2] - 2024-03-20
+
+### Security
+- Replace google.golang.org/grpc@v1.27.0, golang.org/x/crypto@v0.14.0,
+  google.golang.org/protobuf@v1.31.0, and github.com/mattn/go-sqlite3@v1.14.15
+  to eliminate vulnerabilities (CNJR-3914)
+
+## [1.6.1] - 2023-07-27
+
+### Security
+- Updated go to 1.20, alpine to latest, and redhat UBI to ubi9 in main Dockerfile
+  [cyberark/secrets-provider-for-k8s#541](https://github.com/cyberark/secrets-provider-for-k8s/pull/541)
+
+## [1.6.0] - 2023-07-19
+### Added
+- Log level is now configurable using the `LOG_LEVEL` environment variable or `conjur.org/log-level` annotation.
+  The existing `DEBUG` environment variable and `conjur.org/debug-logging` annotation is deprecated and will be removed in a future update.
+  [cyberark/secrets-provider-for-k8s#534](https://github.com/cyberark/secrets-provider-for-k8s/pull/534)
+
+### Security
+- Upgrade google/cloud-sdk to v437.0.0-slim
+  [cyberark/secrets-provider-for-k8s#533](https://github.com/cyberark/secrets-provider-for-k8s/pull/533)
+- Upgrade google/cloud-sdk to v435.0.1 and google.golang.org/protobuf to v1.29.1
+  [cyberark/secrets-provider-for-k8s#531](https://github.com/cyberark/secrets-provider-for-k8s/pull/531)
+
 ## [1.5.1] - 2023-05-26
 
 ### Security
 - Forced github.com/emicklei/go-restful/v3 to use v3.10.2 to remove PRISMA-2022-0227 (found in Twistlock scan)
-  and updated versions of gotelemetry.io/otel (to 1.16.0), github.com/stretchr/testify (to 1.8.3), and 
+  and updated versions of gotelemetry.io/otel (to 1.16.0), github.com/stretchr/testify (to 1.8.3), and
   the k8s.io libraries (to 0.27.2)
   [cyberark/secrets-provider-for-k8s#526](https://github.com/cyberark/secrets-provider-for-k8s/pull/526)
 
@@ -44,14 +119,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Updated Go to 1.19
   [cyberark/secrets-provider-for-k8s#484](https://github.com/cyberark/secrets-provider-for-k8s/pull/484)
-- Updated go.opentelmetry.io/otel to 1.10.0 and k8s.io/api, k8s.io/apimachinery, 
-  and k8s.io/client-go to latest versions 
+- Updated go.opentelmetry.io/otel to 1.10.0 and k8s.io/api, k8s.io/apimachinery,
+  and k8s.io/client-go to latest versions
   [cyberark/secrets-provider-for-k8s#484](https://github.com/cyberark/secrets-provider-for-k8s/pull/484)
 
 ### Security
 - More replace statements for golang.org/x/crypto, gopkg.in/yaml.v2, and golang.org/x/net
   [cyberark/secrets-provider-for-k8s#486](https://github.com/cyberark/secrets-provider-for-k8s/pull/486)
-- Updated replace statements in go.mod to remove vulnerable versions of golang.org/x/net 
+- Updated replace statements in go.mod to remove vulnerable versions of golang.org/x/net
   [cyberark/secrets-provider-for-k8s#484](https://github.com/cyberark/secrets-provider-for-k8s/pull/484)
   [cyberark/secrets-provider-for-k8s#485](https://github.com/cyberark/secrets-provider-for-k8s/pull/485)
 - Updated replace statements in go.mod to remove vulnerable versions of golang.org/x/text
@@ -59,7 +134,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.4.4] - 2022-07-12
 ### Changed
-- Updated multiple go dependencies 
+- Updated multiple go dependencies
   [cyberark/secrets-provider-for-k8s#477](https://github.com/cyberark/secrets-provider-for-k8s/pull/477)
 
 ### Security
@@ -296,7 +371,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
   - Escape secrets with backslashes before patching in k8s
 
-[Unreleased]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.5...HEAD
+[1.7.5]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.4...v1.7.5
+[1.7.4]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.3...v1.7.4
+[1.7.3]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.2...v1.7.3
+[1.7.2]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.5...v1.7.0
+[1.6.5]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.4...v1.6.5
+[1.6.4]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.3...v1.6.4
+[1.6.3]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.2...v1.6.3
+[1.6.2]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.1...v1.6.2
+[1.6.1]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.4.6...v1.5.0
 [1.4.6]: https://github.com/cyberark/secrets-provider-for-k8s/compare/v1.4.5...v1.4.6

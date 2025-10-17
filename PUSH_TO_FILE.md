@@ -1,11 +1,10 @@
 # Secrets Provider - Push to File Mode
 
-# Table of Contents
+## Table of Contents
 
 - [Table of Contents](#table-of-contents)
 - [Overview](#overview)
 - [How Push to File Works](#how-push-to-file-works)
-- [Certification Level](#certification-level)
 - [Set up Secrets Provider for Push to File](#set-up-secrets-provider-for-push-to-file)
 - [Reference Table of Configuration Annotations](#reference-table-of-configuration-annotations)
 - [Example Common Policy Path](#example-common-policy-path)
@@ -21,13 +20,13 @@
 ## Overview
 
 The push to file feature detailed below allows Kubernetes applications to
-consume Conjur secrets directly through one or more files accessed through
+consume Secrets Manager secrets directly through one or more files accessed through
 a shared, mounted volume. Providing secrets in this way should require zero
 application changes, as reading local files is a common, platform agnostic
 delivery method.
 
 The Secrets Provider can be configured to create and write multiple files
-containing Conjur secrets. Each file is configured independently as a group of
+containing Secrets Manager secrets. Each file is configured independently as a group of
 [Kubernetes Pod Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/),
 collectively referred to as a "secret group".
 
@@ -45,15 +44,15 @@ feature and provides a more idiomatic deployment experience.
    [Kubernetes Downward API volume](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/).
    The Pod annotations are organized in secret groups, with each secret group
    indicating to the Secrets Provider:
-   - The policy paths from which Conjur secrets should be retrieved.
+   - The policy paths from which Secrets Manager secrets should be retrieved.
    - The format of the secret file to be rendered for that group.
-   - How retrieved Conjur secret values should be mapped to fields
+   - How retrieved Secrets Manager secret values should be mapped to fields
      in the rendered secret file.
 
-1. The Secrets Provider authenticates to the Conjur server using the
+1. The Secrets Provider authenticates to the Secrets Manager server using the
    Kubernetes Authenticator (`authn-k8s`).
 
-1. The Secrets Provider reads all Conjur secrets required across all
+1. The Secrets Provider reads all Secrets Manager secrets required across all
    secret groups.
 
 1. The Secrets Provider renders secret files for each secret group, and
@@ -65,14 +64,6 @@ feature and provides a more idiomatic deployment experience.
 1. Your application container starts and consumes the secret files from
    the shared volume.
 
-## Certification Level
-![](https://img.shields.io/badge/Certification%20Level-Certified-28A745?link=https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md)
-
-The Secrets Provider push to File feature is a **Certified** level project.
-Certified projects **have been reviewed and are supported by CyberArk**. For more
-detailed information on our certification levels, see
-[our community guidelines](https://github.com/cyberark/community/blob/master/Conjur/conventions/certification-levels.md#community).
-
 ## Set up Secrets Provider for Push to File
 
 This section describes how to set up the Secrets Provider for Kubernetes for
@@ -83,7 +74,7 @@ Push to File operation.
 1. <details><summary>Before you begin</summary>
 
    - Make sure that a Kubernetes Authenticator has been configured and enabled.
-     For more information, contact your Conjur admin, or see
+     For more information, contact your Secrets Manager admin, or see
      [Enable Authenticators for Applications](https://docs.conjur.org/Latest/en/Content/Integrations/Kubernetes_deployApplicationCluster.htm).
 
      In this procedure, we will use `dev-cluster` for the Kubernetes
@@ -95,20 +86,20 @@ Push to File operation.
 
      In this procedure, we will use `test-app-namespace` for the namespace,
      and `test-app-sa` for the service account.
-    
+
    - This procedure assumes that you are familiar with loading K8s manifests
      into your workspace.
 
    </details>
 
-1. <details><summary>Define the application as a Conjur host in policy</summary>
+1. <details><summary>Define the application as a Secrets Manager host in policy</summary>
 
 
-   **Conjur admin:** To enable the Secrets Provider for Kubernetes
-   (`cyberark-secrets-provider-for-k8s init container`) to retrieve Conjur
-   secrets, it first needs to authenticate to Conjur.
+   **Secrets Manager admin:** To enable the Secrets Provider for Kubernetes
+   (`cyberark-secrets-provider-for-k8s init container`) to retrieve Secrets Manager
+   secrets, it first needs to authenticate to Secrets Manager.
 
-   - In this step, you define a Conjur host used to authenticate the
+   - In this step, you define a Secrets Manager host used to authenticate the
      `cyberark-secrets-provider-for-k8s` container with the Kubernetes
      Authenticator.
 
@@ -120,17 +111,17 @@ Push to File operation.
 
      The following policy:
 
-     - Defines a Conjur identity for `test-app` by its namespace,
+     - Defines a Secrets Manager identity for `test-app` by its namespace,
        `test-app-namespace`, authentication container name,
        `cyberark-secrets-provider-for-k8s`, as well as by its service account,
        `test-app-sa`.
 
-     - Gives `test-app` permissions to authenticate to Conjur using the
+     - Gives `test-app` permissions to authenticate to Secrets Manager using the
        `dev-cluster` Kubernetes Authenticator.
 
      Save the policy as **apps.yml**:
 
-     ```
+     ```yaml
      - !host
        id: test-app
        annotations:
@@ -147,14 +138,14 @@ Push to File operation.
 
      __**NOTE:** The value of the host's authn-k8s/authentication-container-name
        annotation states the container name from which it authenticates to
-       Conjur. When you create the application deployment manifest below,
+       Secrets Manager. When you create the application deployment manifest below,
        verify that the CyberArk Secrets Provider for Kubernetes init container
        has the same name.__
 
    - Load the policy file to root.
 
-     ```
-     $ conjur policy load -f apps.yml -b root
+     ```sh
+     conjur policy load -f apps.yml -b root
      ```
 
    </details>
@@ -162,19 +153,19 @@ Push to File operation.
 1. <details><summary>Define variables to hold the secrets for your application,
    and grant the access to the variables</summary>
 
-   **Conjur admin:** In this step, you define variables (secrets) to which
+   **Secrets Manager admin:** In this step, you define variables (secrets) to which
    the Secrets Provider for Kubernetes needs access.
 
 
    - Save the following policy as **app-secrets.yml**.
 
-     This policy defines Conjur variables and a group that has permissions on
+     This policy defines Secrets Manager variables and a group that has permissions on
      the variables.
 
      In the following example, all members of the `consumers` group are
      granted permissions on the `username` and `password` variables:
 
-     ```
+     ```yaml
      - !policy
        id: secrets
        body:
@@ -193,19 +184,18 @@ Push to File operation.
 
    - Load the policy file to root.
 
-     ```
-     $ conjur policy load -f app-secrets.yml -b root
+     ```sh
+     conjur policy load -f app-secrets.yml -b root
      ```
 
    - Populate the variables with secrets, for example `myUser` and `MyP@ssw0rd!`:
 
-     ```
-     $ conjur variable set -i secrets/username -v myUser
-     $ conjur variable set -i secrets/password -v MyP@ssw0rd!
+     ```sh
+     conjur variable set -i secrets/username -v myUser
+     conjur variable set -i secrets/password -v MyP@ssw0rd!
      ```
 
 1. <details><summary>Set up the application deployment manifest</summary>
-
 
    **Application developer:** In this step you set up an application
    deployment manifest that includes includes an application container,
@@ -226,7 +216,7 @@ Push to File operation.
    - `/conjur/podinfo` for the `podinfo` volume.
    - `/conjur/secrets` for the `conjur-secrets` volume.
 
-   ```
+   ```yaml
    apiVersion: apps/v1
    kind: Deployment
    metadata:
@@ -299,7 +289,7 @@ Push to File operation.
    shared volume that will appear in the `test-app` container at location
    `/opt/secrets/conjur/credentials.yaml`, with contents as follows:
 
-   ```
+   ```yaml
    "admin-username": "myUser"
    "admin-password": "myP@ssw0rd!"
    ```
@@ -315,21 +305,21 @@ Please refer to the
 [Secrets Provider documentation](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/Integrations/k8s-ocp/cjr-k8s-secrets-provider-ic.htm)
 for a description of each environment variable setting:
 
-| K8s Annotation  | Equivalent<br>Environment Variable | Description, Notes |
-|-----------------------------------------|---------------------|----------------------------------|
-| `conjur.org/authn-identity`         | `CONJUR_AUTHN_LOGIN`  | Required value. Example: `host/conjur/authn-k8s/cluster/apps/inventory-api` |
-| `conjur.org/container-mode`         | `CONTAINER_MODE`      | Allowed values: <ul><li>`init`</li><li>`application`</li></ul>Defaults to `init`.<br>Must be set (or default) to `init`for Push to File mode.<br>NOTE: `sidecar` is supported for [Secrets Rotation](ROTATION.md)|
-| `conjur.org/secrets-destination`    | `SECRETS_DESTINATION` | Allowed values: <ul><li>`file`</li><li>`k8s_secrets`</li></ul> |
-| `conjur.org/k8s-secrets`            | `K8S_SECRETS`         | This list is ignored when `conjur.org/secrets-destination` annotation is set to **`file`** |
-| `conjur.org/retry-count-limit`      | `RETRY_COUNT_LIMIT`   | Defaults to 5
-| `conjur.org/retry-interval-sec`     | `RETRY_INTERVAL_SEC`  | Defaults to 1 (sec)              |
-| `conjur.org/debug-logging`          | `DEBUG`               | Defaults to `false`              |
-| `conjur.org/conjur-secrets.{secret-group}`      | Note\* | List of secrets to be retrieved from Conjur. Each entry can be either:<ul><li>A Conjur variable path</li><li> A key/value pairs of the form <br>`<alias>:<Conjur variable path>`<br>`[content-type: <type>]`<br>where the `alias` represents the name of the secret to be written to the secrets file and the optional `content-type` is either text or base64, defaulting to text. See [Decoding Base64 Encoded Secrets](#decoding-base64-encoded-secrets) for more information.|
-| `conjur.org/conjur-secrets-policy-path.{secret-group}` | Note\* | Defines a common Conjur policy path, assumed to be relative to the root policy.<br><br>When this annotation is set, the policy paths defined by `conjur.org/conjur-secrets.{secret-group}` are relative to this common path.<br><br>When this annotation is not set, the policy paths defined by `conjur.org/conjur-secrets.{secret-group}` are themselves relative to the root policy.<br><br>(See [Example Common Policy Path](#example-common-policy-path) for an explicit example of this relationship.)|
-| `conjur.org/secret-file-path.{secret-group}`    | Note\* | Relative path for secret file or directory to be written. This path is assumed to be relative to the respective mount path for the shared secrets volume for each container.<br><br>If the `conjur.org/secret-file-format.{secret-group}` is set to `template`, then this secret file path defaults to `{secret-group}.out`. For example, if the secret group name is `my-app`, the the secret file path defaults to `my-app.out`.<br><br>Otherwise, this secret file path defaults to `{secret-group}.{secret-group-file-format}`. For example, if the secret group name is `my-app`, and the secret file format is set for YAML, the the secret file path defaults to `my-app.yaml`.
-| `conjur.org/secret-file-permissions.{secret-group}`| Note\*| Explicitly defines secret file permissions. <br><br>Defaults to `-rw-r--r--` (Octal `644`)<br><br>Values must be formatted as a valid permission string _(Directory bit is optional)_. For example:<li>`-rw-rw-r--`</li><li>`rw-rw-r--`</li>Owner must have at a minimum read/write permissions (`-rw-------`)
-| `conjur.org/secret-file-format.{secret-group}`  | Note\* | Allowed values:<ul><li>yaml (default)</li><li>json</li><li>dotenv</li><li>bash</li><li>template</li></ul><br>This annotation must be set to `template` when using custom templates.<br><br>(See [Example Secret File Formats](#example-secret-file-formats) for example output files.) |
-| `conjur.org/secret-file-template.{secret-group}`| Note\* | Defines a custom template in Golang text template format with which to render secret file content. See dedicated [Custom Templates for Secret Files](#custom-templates-for-secret-files) section for details. |
+| K8s Annotation  | Equivalent<br>Environment Variable | Description, Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|-----------------------------------------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `conjur.org/authn-identity`         | `CONJUR_AUTHN_LOGIN`  | Required value. Example: `host/conjur/authn-k8s/cluster/apps/inventory-api`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `conjur.org/container-mode`         | `CONTAINER_MODE`      | Allowed values: <ul><li>`init`</li><li>`application`</li></ul>Defaults to `init`.<br>Must be set (or default) to `init`for Push to File mode.<br>NOTE: `sidecar` is supported for [Secrets Rotation](ROTATION.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `conjur.org/secrets-destination`    | `SECRETS_DESTINATION` | Allowed values: <ul><li>`file`</li><li>`k8s_secrets`</li></ul>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `conjur.org/k8s-secrets`            | `K8S_SECRETS`         | This list is ignored when `conjur.org/secrets-destination` annotation is set to **`file`**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `conjur.org/retry-count-limit`      | `RETRY_COUNT_LIMIT`   | Defaults to 5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+| `conjur.org/retry-interval-sec`     | `RETRY_INTERVAL_SEC`  | Defaults to 1 (sec)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `conjur.org/log-level`              | `LOG_LEVEL`           | Allowed values: <ul><li>`debug`</li><li>`info`</li><li>`warn`</li><li>`error`</li></ul>Defaults to `info`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `conjur.org/conjur-secrets.{secret-group}`      | Note\* | List of secrets to be retrieved from Secrets Manager. Each entry can be either:<ul><li>A Secrets Manager variable path</li><li> A key/value pairs of the form <br>`<alias>:<Secrets Manager variable path>`<br>`[content-type: <type>]`<br>where the `alias` represents the name of the secret to be written to the secrets file and the optional `content-type` is either text or base64, defaulting to text. See [Decoding Base64 Encoded Secrets](#decoding-base64-encoded-secrets) for more information.                                                                                                                                                                                                      |
+| `conjur.org/conjur-secrets-policy-path.{secret-group}` | Note\* | Defines a common Secrets Manager policy path, assumed to be relative to the root policy.<br><br>When this annotation is set, the policy paths defined by `conjur.org/conjur-secrets.{secret-group}` are relative to this common path.<br><br>When this annotation is not set, the policy paths defined by `conjur.org/conjur-secrets.{secret-group}` are themselves relative to the root policy.<br><br>(See [Example Common Policy Path](#example-common-policy-path) for an explicit example of this relationship.)                                                                                                                                                                           |
+| `conjur.org/secret-file-path.{secret-group}`    | Note\* | Relative path for secret file or directory to be written. This path is assumed to be relative to the respective mount path for the shared secrets volume for each container.<br><br>If the `conjur.org/secret-file-format.{secret-group}` is set to `template`, then this secret file path defaults to `{secret-group}.out`. For example, if the secret group name is `my-app`, the the secret file path defaults to `my-app.out`.<br><br>Otherwise, this secret file path defaults to `{secret-group}.{secret-group-file-format}`. For example, if the secret group name is `my-app`, and the secret file format is set for YAML, the the secret file path defaults to `my-app.yaml`. 
+| `conjur.org/secret-file-permissions.{secret-group}`| Note\*| Explicitly defines secret file permissions. <br><br>Defaults to `-rw-r--r--` (Octal `644`)<br><br>Values must be formatted as a valid permission string _(Directory bit is optional)_. For example:<li>`-rw-rw-r--`</li><li>`rw-rw-r--`</li>Owner must have at a minimum read/write permissions (`-rw-------`)                                                                                                                                                                                                                                                                                                                                                                         
+| `conjur.org/secret-file-format.{secret-group}`  | Note\* | Allowed values:<ul><li>yaml (default)</li><li>json</li><li>dotenv</li><li>bash</li><li>properties</li><li>template</li></ul><br>This annotation must be set to `template` when using custom templates.<br><br>(See [Example Secret File Formats](#example-secret-file-formats) for example output files.)                                                                                                                                                                                                                                                                                                                                                                              |
+| `conjur.org/secret-file-template.{secret-group}`| Note\* | Defines a custom template in Golang text template format with which to render secret file content. See dedicated [Custom Templates for Secret Files](#custom-templates-for-secret-files) section for details.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 __Note*:__ These Push to File annotations do not have an equivalent
 environment variable setting. The Push to File feature must be configured
@@ -339,16 +329,16 @@ using annotations.
 
 Given the relationship between `conjur.org/conjur-secrets.{secret-group}` and
 `conjur.org/conjur-secrets-policy-path.{secret-group}`, the following sets of
-annotations will eventually retrieve the same secrets from Conjur:
+annotations will eventually retrieve the same secrets from Secrets Manager:
 
-```
+```yaml
 conjur.org/conjur-secrets.db: |
   - url: policy/path/api-url
   - policy/path/username
   - policy/path/password
 ```
 
-```
+```yaml
 conjur.org/conjur-secrets-policy-path.db: policy/path/
 conjur.org/conjur-secrets.db: |
   - url: api-url
@@ -364,7 +354,7 @@ Here is an example YAML format secret file. This format is rendered when
 the `conjur.org/secret-file-format.{secret-group}` annotation is set
 to `yaml`:
 
-```
+```yaml
 "api-url": "dev/redis/api-url"
 "admin-username": "dev/redis/username"
 "admin-password": "dev/redis/password"
@@ -376,7 +366,7 @@ Here is an example JSON format secret file. This format is rendered when
 the `conjur.org/secret-file-format.{secret-group}` annotation is set
 to `json`:
 
-```
+```json
 {"api-url":"dev/redis/api-url","admin-username":"dev/redis/username","admin-password":"dev/redis/password"}
 ```
 
@@ -386,23 +376,25 @@ Here is an example bash format secret file. This format is rendered when
 the `conjur.org/secret-file-format.{secret-group}` annotation is set
 to `bash`:
 
-```
+```sh
 export api-url="dev/redis/api-url"
 export admin-username="dev/redis/username"
 export admin-password="dev/redis/password"
 ```
 
-### Example dotenv Secret File
+### Example dotenv/properties Secret File
 
 Here is an example dotenv format file secret file. This format is rendered when
 the `conjur.org/secret-file-format.{secret-group}` annotation is set
-to `dotenv`:
+to `dotenv` or `properties`:
 
-```
+```sh
 api-url="dev/redis/api-url"
 admin-username="dev/redis/username"
 admin-password="dev/redis/password"
 ```
+
+> NOTE: The only difference between dotenv and properties is the validation of the key. For dotenv, the key cannot contain '.'. For properties, the key can contain '.'.
 
 ## Custom Templates for Secret Files
 
@@ -417,7 +409,7 @@ text template formatting. Using custom templates requires the following:
 
 The custom template must be provided by only one of the methods listed below,
 either by Pod annotation or by volume-mounted ConfigMap. Providing a template by
-both or neither method fails before retrieving secrets from Conjur.
+both or neither method fails before retrieving secrets from Secrets Manager.
 
 1. <details><summary>Pod annotation</summary>
 
@@ -426,7 +418,7 @@ both or neither method fails before retrieving secrets from Conjur.
    describe a valid secret group that uses a custom template defined in Pod
    annotations:
 
-   ```
+   ```yaml
    conjur.org/secret-group.example: |
      - admin-username: <variable-policy-path>
      - admin-password: <variable-policy-path>
@@ -459,7 +451,7 @@ both or neither method fails before retrieving secrets from Conjur.
    The following is an example of a ConfigMap manifest defining a custom Go
    template for a secret group `example`:
 
-   ```
+   ```yaml
    apiVersion: v1
    kind: ConfigMap
    metadata:
@@ -484,7 +476,7 @@ both or neither method fails before retrieving secrets from Conjur.
 
    Given the following template file, `example.tpl`:
 
-   ```
+   ```go
    "database": {
      "username": {{ secret "admin-username" }},
      "password": {{ secret "admin-password" }},
@@ -493,7 +485,7 @@ both or neither method fails before retrieving secrets from Conjur.
 
    Create a ConfigMap from the template files:
 
-   ```
+   ```sh
    kubectl create configmap my-custom-template --from-file=/path/to/example.tpl
    ```
 
@@ -505,7 +497,7 @@ both or neither method fails before retrieving secrets from Conjur.
    can be created from a directory of template files, each adhering to the
    `{secret-group}.tpl` naming pattern:
 
-   ```
+   ```sh
    kubectl create configmap my-custom-template --from-file=/path/to/template/dir/
    ```
 
@@ -514,7 +506,7 @@ both or neither method fails before retrieving secrets from Conjur.
    The following annotations describe a valid secret group that uses the custom
    template created by either of the previously described methods:
 
-   ```
+   ```yaml
    conjur.org/secret-group.example: |
      - admin-username: <variable-policy-path>
      - admin-password: <variable-policy-path>
@@ -525,7 +517,7 @@ both or neither method fails before retrieving secrets from Conjur.
    to be added to the application's deployment manifest, populated with the
    contents of the ConfigMap:
 
-   ```
+   ```yaml
    volumes:
    - name: conjur-templates
      configMap:
@@ -535,7 +527,7 @@ both or neither method fails before retrieving secrets from Conjur.
    Then, mount the ConfigMap-populated volume to the Secrets Provider init
    container at `/conjur/templates`:
 
-   ```
+   ```yaml
    volumeMounts:
    - name: conjur-templates
      mountPath: /conjur/templates
@@ -543,13 +535,13 @@ both or neither method fails before retrieving secrets from Conjur.
 
    </details>
 
-### Using Conjur Secrets in Custom Templates
+### Using Secrets Manager Secrets in Custom Templates
 
-Injecting Conjur secrets into custom templates requires using the built-in custom
+Injecting Secrets Manager secrets into custom templates requires using the built-in custom
 template function `secret`. The action shown below renders the value associated
 with `<secret-alias>` in the secret-file.
 
-```
+```go
 {{ secret "<secret-alias>" }}
 ```
 
@@ -559,16 +551,16 @@ Custom templates support global functions native to Go's `text/template`
 package. The following is an example of using template function to HTML
 escape/encode a secret value.
 
-```
+```go
 {{ secret "alias" | html }}
 {{ secret "alias" | urlquery }}
 ```
 
-If the value retrieved from Conjur for `alias` is `"<Hello@World!>"`,
+If the value retrieved from Secrets Manager for `alias` is `"<Hello@World!>"`,
 the following file content will be rendered, each HTML escaped and encoded,
 respectively:
 
-```
+```txt
 &lt;Hello;@World!&gt;
 %3CHello%40World%21%3E
 ```
@@ -586,20 +578,20 @@ supported functions are:
 
 These can be used as follows:
 
-```
+```go
 {{ secret "alias" | b64enc }}
 {{ secret "alias" | b64dec }}
 ```
 
 When using the `b64dec` function, an error will occur if the value retrieved from
-Conjur is not a valid Base64 encoded string.
+Secrets Manager is not a valid Base64 encoded string.
 
 ### Execution "Double-Pass"
 
 To avoid leaking sensitive secret data to logs, and to ensure that a
 misconfigured Push to File workflow fails fast, Push to File implements a
 "double-pass" execution of custom templates. The template "first-pass" runs
-before secrets are retrieved from Conjur, and validates that the provided custom
+before secrets are retrieved from Secrets Manager, and validates that the provided custom
 template successfully executes given `"REDACTED"` for each secret value.
 Redacting secret values allows for secure, complete error logging for
 malformed templates. The template "second-pass" runs when rendering secret
@@ -616,7 +608,7 @@ branches of the custom template._
 The following is an example of using a custom template to render secret data by
 referencing secrets directly using the custom template function `secret`.
 
-```
+```yaml
 conjur.org/secret-file-path.direct-reference: ./direct.txt
 conjur.org/secret-file-template.direct-reference: |
   username | {{ secret "db-username" }}
@@ -626,7 +618,7 @@ conjur.org/secret-file-template.direct-reference: |
 Assuming that the following secrets have been retrieved for secret group
 `direct-reference`:
 
-```
+```yaml
 db-username: admin
 db-password: my$ecretP@ss!
 ```
@@ -634,7 +626,7 @@ db-password: my$ecretP@ss!
 Secrets Provider will render the following content for the file
 `/conjur/secrets/direct.txt`:
 
-```
+```txt
 username | admin
 password | my$ecretP@ss!
 ```
@@ -644,7 +636,7 @@ password | my$ecretP@ss!
 The following is an example of using a custom template to render secret data
 using an iterative process instead of referencing all variables directly.
 
-```
+```yaml
 conjur.org/secret-file-path.iterative-reference: ./iterative.txt
 conjur.org/secret-file-template.iterative-reference: |
   {{- range $index, $secret := .SecretsArray -}}
@@ -653,14 +645,14 @@ conjur.org/secret-file-template.iterative-reference: |
 ```
 
 Here, `.SecretsArray` is a reference to Secret Provider's internal array of
-secrets that have been retrieved from Conjur. For each entry in this array,
+secrets that have been retrieved from Secrets Manager. For each entry in this array,
 there is a secret `Alias` and `Value` field that can be referenced in the custom
 template.
 
 Assuming that the following secrets have been retrieved for secret group
 `iterative-reference`:
 
-```
+```txt
 db-username: admin
 db-password: my$ecretP@ss!
 ```
@@ -668,7 +660,7 @@ db-password: my$ecretP@ss!
 Secrets Provider will render the following content for the file
 `/conjur/secrets/iterative.txt`:
 
-```
+```txt
 db-username | admin
 db-password | my$ecretP@ss!
 ```
@@ -679,7 +671,7 @@ The following is an example of using a custom template to render a secret file
 containing a Postgres connection string. For a secret group described by the
 following annotations:
 
-```
+```yaml
 conjur.org/secret-file-path.postgres: ./pg-connection-string.txt
 conjur.org/secret-file-template.postgres: |
   postgresql://{{ secret "dbuser" }}:{{ secret "dbpassword" }}@{{ secret "hostname" }}:{{ secret "hostport" }}/{{ secret "dbname" }}??sslmode=require
@@ -688,7 +680,7 @@ conjur.org/secret-file-template.postgres: |
 Assuming that the following secrets have been retrieved for secret group
 `postgres`:
 
-```
+```yaml
 dbuser:     "my-user"
 dbpassword: "my-secret-pa$$w0rd"
 dbname:     "postgres"
@@ -699,7 +691,7 @@ hostport:   5432
 Secrets Provider will render the following content for the file
 `/conjur/secrets/pg-connection-string.txt`:
 
-```
+```txt
 postgresql://my-user:my-secret-pa$$w0rd@database.example.com:5432/postgres??sslmode=require
 ```
 
@@ -711,8 +703,9 @@ Spring Boot applications deployed in Kubernetes, Secrets Provider's Push-to-File
 feature can generate properly formatted config files, populated with secret
 data, using custom templates.
 
-This example assumes that the target Conjur server has been loaded with the
+This example assumes that the target Secrets Manager server has been loaded with the
 following secrets, representing a PostgreSQL database and its credentials:
+
 - `backend/pg/url`
 - `backend/pg/username`
 - `backend/pg/password`
@@ -724,7 +717,7 @@ Create a file defining a Spring Boot configuration template, saved as
 `spring-app.tpl`. The following represent template examples for an
 `application.yml` template:
 
-```
+```yaml
 spring:
   datasource:
     platform: postgres
@@ -738,7 +731,8 @@ spring:
 ```
 
 ...and an `application.properties` template:
-```
+
+```txt
 spring.datasource.platform: postgres
 spring.datasource.url: jdbc:{{ secret "url" }}
 spring.datasource.username: {{ secret "username" }}
@@ -749,7 +743,7 @@ spring.jpa.hibernate.ddl-auto: update
 
 Create a ConfigMap from the new template file:
 
-```
+```sh
 kubectl create configmap spring-boot-templates \
   --from-file=/path/to/spring-app.tpl \
   --namespace test-app-namespace
@@ -757,6 +751,7 @@ kubectl create configmap spring-boot-templates \
 
 Now that the `spring-boot-templates` ConfigMap is deployed to the desired
 namespace, set up a Deployment manifest, with:
+
 - a Secrets Provider init container configured for Push-to-File with custom
   secret file templates,
 - a Spring Boot application container, configured to consume the newly-generated
@@ -847,7 +842,8 @@ Enabling Push to File on your application Pod requires the addition of several V
 Some example Volume/VolumeMount configurations are shown below.
 
 - Example Pod Volumes:
-  ```
+  
+  ```yaml
   volumes:
     - name: podinfo
       downwardAPI:
@@ -859,20 +855,25 @@ Some example Volume/VolumeMount configurations are shown below.
       emptyDir:
         medium: Memory
   ```
+
 - Example volume mounts for the Secrets Provider init container. The `mountPath` values must appear exactly as shown below:
-  ```
+
+  ```yaml
   volumeMounts:
     - name: podinfo
       mountPath: /conjur/podinfo
     - name: conjur-secrets
       mountPath: /conjur/secrets
   ```
+
 - Example volume mounts for the application container. The mountPath to use is dependent upon where your application expects to find secret files:
-  ```
+
+  ```yaml
   volumeMounts:
     - name: conjur-secrets
       mountPath: <your-desired-path-to-secret-files>
   ```
+
 ## Secret File Attributes
 
 By default, the Secrets Provider will create secrets files with the following file attributes:
@@ -883,7 +884,7 @@ By default, the Secrets Provider will create secrets files with the following fi
 | Group       | `root`             | OpenShift requires that any files/directories that are shared between containers in a Pod must use a GID of 0 (i.e. GID for the root group) The Secrets Provider uses a GID of 0 for secrets files even for non-OpenShift platforms, for simplicity.       |
 | UID         | `777`              |        |
 | GID         | `0`                |        |
-| Permissions | `rw-rw-r--`        | As shown in the table table, the Secrets Provider will create secrets files that are world readable. This means that the files will be readable from any other container in the same Pod that mounts the Conjur secrets shared Volume.       |
+| Permissions | `rw-rw-r--`        | As shown in the table table, the Secrets Provider will create secrets files that are world readable. This means that the files will be readable from any other container in the same Pod that mounts the Secrets Manager secrets shared Volume.       |
 
 The file attributes can be overridden by defining a 
 [PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.21/#podsecuritycontext-v1-core) for the application Pod.
@@ -891,7 +892,8 @@ The file attributes can be overridden by defining a
 For example, to have containers run as the `nobody` user (UID 65534) and `nobody` group (GID 65534), 
 and have secrets files created with the corresponding GID, the Pod SecurityContext 
 would be as follows:
-```
+
+```yaml
     securityContext:
       runAsUser: 65534
       runAsGroup: 65534
@@ -911,7 +913,7 @@ liveness or readiness failures.
 
 ## Decoding Base64 Encoded Secrets
 
-Secrets can be stored in Conjur as base64 encoded strings. If the applications consuming the secrets cannot be modified
+Secrets can be stored in Secrets Manager as base64 encoded strings. If the applications consuming the secrets cannot be modified
 to decode the secrets, those secrets become unusable. Secrets Provider can decode the secrets before handing it over to
 the applications for consumption.
 
@@ -924,7 +926,8 @@ Add the `content-type` annotation.
 Note the `alias` must also be defined with the `path`.
 
 Given the following secrets annotation:
-```
+
+```yaml
 conjur.org/conjur-secrets.db: |
   - url: policy/path/api-url
   - policy/path/username
@@ -933,7 +936,7 @@ conjur.org/conjur-secrets.db: |
 
 Update with base64 decode as below:
 
-```
+```yaml
 conjur.org/conjur-secrets.db: |
   - url: policy/path/api-url
   - policy/path/username
@@ -952,7 +955,8 @@ Secrets Provider in Kubernetes Secrets mode is configured using annotations and
 by configuring a kubernetes secret with a `conjur-map`.
 
 Given the following Kubernetes Secret configuration
-```
+
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -968,7 +972,7 @@ stringData:
 To add base64 decoding to the `test-secrets-provider-k8s-app-db/password`
 modify the `DB_PASSWORD` with an id: and content-type: as below.
 
-```
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -982,6 +986,7 @@ stringData:
       id: test-secrets-provider-k8s-app-db/password
       content-type: base64
 ```
+
 If the contents cannot be decoded, a warning is displayed in the log files
 and the contents retrieved will not be decoded.
 
@@ -993,33 +998,33 @@ annotation-based configuration and/or Push to File mode can be done in two ways:
 - Inspect the existing application Deployment manifest (if available) or inspect
   a live deployment with:
 
-  ```
+  ```sh
   kubectl get deployment $DEPLOYMENT_NAME -o yaml
   ```
 
   Update the manifest with the changes described below, and then re-apply then
   configuration:
 
-  ```
+  ```sh
   kubectl apply -f <updated-manifest-filepath>
   ```
 
 - Edit a live deployment, applying the changes described below, with the
   interactive command:
 
-  ```
+  ```sh
   kubectl edit deployment $DEPLOYMENT_NAME
   ```
 
 To convert Secrets Provider from K8s Secrets mode to Push to File mode, make the
 following changes to the deployment:
 
-- Convert the Service Provider container/Conjur environment variable settings
+- Convert the Service Provider container/Secrets Manager environment variable settings
   to the equivalent annotation-based settings. Use the
   [Annotation Reference Table](#reference-table-of-configuration-annotations)
   for envvar-to-annotation mappings.
   - `conjur.org/secrets-destination: file` enables Push to File mode.
-  - `conjur.org/conjur-secrets.{group}` defines Conjur policy paths previously
+  - `conjur.org/conjur-secrets.{group}` defines Secrets Manager policy paths previously
     defined in Kubernetes Secrets.
     - For each existing Kubernetes Secret, you may wish to create a separate
       secrets group.
@@ -1029,9 +1034,11 @@ following changes to the deployment:
       the secret names as aliases.
     - Alternatively, for existing deployments, this mapping can be obtained with
       the command
-      ```
+
+      ```sh
       kubectl get secret $SECRET_NAME -o jsonpath={.data.conjur-map} | base64 --decode
       ```
+
   - `conjur.org/secret-file-path.{group}` configures a target file destination.
   - `conjur.org/secret-file-format.{group}` configures a desired file type,
     depending on how the application will consume the secrets file.
@@ -1040,7 +1047,8 @@ following changes to the deployment:
   - Remove environment variables referencing Kubernetes Secrets from the
     application container.
 - Add push-to-file volumes:
-    ```
+
+    ```yaml
     volumes:
       - name: podinfo
         downwardAPI:
@@ -1055,8 +1063,10 @@ following changes to the deployment:
         emptyDir:
           medium: Memory
     ```
+
 - Add push-to-file volume mounts to the Secrets Provider init container:
-    ```
+
+    ```yaml
     volumeMounts:
       - name: podinfo
         mountPath: /conjur/podinfo
@@ -1065,12 +1075,15 @@ following changes to the deployment:
       - name: conjur-templates
         mountPath: /conjur/templates
     ```
+
 - Add push-to-file volume mount to the application container:
-    ```
+
+    ```yaml
     volumeMounts:
       - name: conjur-secrets
         mountPath: /conjur/secrets
     ```
+
 - Delete existing Kubernetes Secrets or their manifests:
   - If using Helm, delete Kubernetes Secrets manifests and do a
     `helm upgrade ...`
@@ -1084,13 +1097,15 @@ following changes to the deployment:
 
 This section describes how to troubleshoot common Secrets Provider for Kubernetes issues.
 
-### Enable logs
+### Enable debug logs
 
-To enable logs, add the debug parameter to the application deployment manifest.
-```
+To enable debug logs, add the debug parameter to the application deployment manifest.
+
+```yaml
 annotations:
-    conjur.org/debug-logging  "true"
+    conjur.org/log-level  "debug"
 ```
+
 For details, see [Reference Table of Configuration Annotations](#reference-table-of-configuration-annotations)
 
 ### Display logs
@@ -1098,32 +1113,41 @@ For details, see [Reference Table of Configuration Annotations](#reference-table
 To display the Secrets Provider logs in Kubernetes.
 
 - Go to the app namespace
-```
-kubectl config set-context --current --namespace=<namespace>
-```
+
+  ```sh
+  kubectl config set-context --current --namespace=<namespace>
+  ```
+
 - Find the pod name
-```
-kubectl get pods
-```
+
+  ```sh
+  kubectl get pods
+  ```
+
 - Display the logs
-```
-kubectl logs <pod-name> -c <init-container-name>
-```
-To display the Secrets Provider logs in Openshift.
+
+  ```sh
+  kubectl logs <pod-name> -c <init-container-name>
+  ```
+
+  To display the Secrets Provider logs in Openshift.
 
 - Go to the app namespace
-```
-oc project <project-name>
-```
+  ```sh
+  oc project <project-name>
+  ```
 
 - Find the pod name
-```
-oc get pods
-```
+
+  ```sh
+  oc get pods
+  ```
+
 - Display the logs
-```
-oc logs <pod-name> -c <init-container-name>
-```
+
+  ```sh
+  oc logs <pod-name> -c <init-container-name>
+  ```
 
 ### Common issues displayed in the logs and resolutions
 

@@ -5,27 +5,29 @@ Thanks for your interest in the CyberArk Secrets Provider for Kubernetes. We wel
 ## Table of Contents
 
 - [Contributing to the CyberArk Secrets Provider for Kubernetes](#contributing-to-the-cyberark-secrets-provider-for-kubernetes)
-  * [Prerequisites](#prerequisites)
-    + [Go](#go)
-  * [Documentation](#documentation)
-    + [Get up and running](#get-up-and-running)
-    + [Deploy a Local Dev Environment (K8s)](#deploy-a-local-dev-environment--k8s-)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+    - [Go](#go)
+  - [Documentation](#documentation)
+    - [Get up and running](#get-up-and-running)
+    - [Deploy a Local Dev Environment (K8s)](#deploy-a-local-dev-environment-k8s)
       - [Prerequisites](#prerequisites-1)
       - [Deploy a local development environment](#deploy-a-local-development-environment)
+      - [Run integration tests against local development environment](#run-integration-tests-against-local-development-environment)
       - [Clean-up](#clean-up)
       - [Limitations](#limitations)
-  * [Contributing](#contributing)
-    + [Contributing workflow](#contributing-workflow)
-    + [Testing](#testing)
+  - [Contributing](#contributing)
+    - [Contributing workflow](#contributing-workflow)
+    - [Testing](#testing)
       - [Unit testing](#unit-testing)
       - [Integration testing](#integration-testing)
-  * [Releases](#releases)
-    + [Pre-requisites](#pre-requisites)
-    + [Update the version, changelog, and notices](#update-the-version--changelog--and-notices)
-    + [Add a git tag](#add-a-git-tag)
-    + [Push Helm package](#push-helm-package)
-    + [Publish the git release](#publish-the-git-release)
-    + [Publish the Red Hat image](#publish-the-red-hat-image)
+      - [Tracing](#tracing)
+  - [Releases](#releases)
+    - [Pre-requisites](#pre-requisites)
+    - [Update the version, changelog, and notices](#update-the-version-changelog-and-notices)
+    - [Push Helm package](#push-helm-package)
+    - [Release and Promote](#release-and-promote)
+    - [Publish the Red Hat image](#publish-the-red-hat-image)
 
 ## Prerequisites
 
@@ -35,27 +37,27 @@ To work in this codebase, you will want to have Go version 1.12+ installed.
 
 ## Documentation
 
-The full documentation for the Cyberark Secrets Provider for Kubernetes can be found [here](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/Integrations/Kubernetes_deployApplicationsConjur-k8s-Secrets.htm) for Conjur Enterprise and [here](https://docs.conjur.org/Latest/en/Content/Integrations/Kubernetes_deployApplicationsConjur-k8s-Secrets.htm) for Conjur Open Source.
+The full documentation for the Cyberark Secrets Provider for Kubernetes can be found [here](https://docs.cyberark.com/conjur-enterprise/latest/en/content/resources/_topnav/cc_home.htm) for Secrets Manager, Self-Hosted and [here](https://docs.cyberark.com/conjur-open-source/latest/en/content/overview/conjur-oss-suite-overview.html) for Conjur Open Source.
 
 ### Get up and running
 
 Before you can start contributing to the CyberArk Secrets Provider for Kubernetes project, you must:
 
-1. Setup your environment. 
-    
-    a. For detailed instructions on how to setup a Conjur Enterprise env, see [Conjur Enterprise Setup](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/HomeTilesLPs/LP-Tile1.htm).
-    
+1. Setup your environment.
+
+    a. For detailed instructions on how to setup a Secrets Manager, Self-Hosted env, see [Secrets Manager, Self-Hosted Setup](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/HomeTilesLPs/LP-Tile1.htm).
+
     b. For detailed instructions on how to setup a Conjur Open Source env, see [Conjur Open Source Setup](https://docs.conjur.org/Latest/en/Content/HomeTilesLPs/LP-Tile1.htm).
 
 2. Setup the CyberArk Secrets Provider for Kubernetes
 
-    a. For detailed setup instructions for Conjur Enterprise, see [CyberArk Secrets Provider for Kubernetes for Conjur Enterprise](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/Integrations/Kubernetes_deployApplicationsConjur-k8s-Secrets.htm).
-    
+    a. For detailed setup instructions for Secrets Manager, Self-Hosted, see [CyberArk Secrets Provider for Kubernetes for Secrets Manager, Self-Hosted](https://docs.cyberark.com/Product-Doc/OnlineHelp/AAM-DAP/Latest/en/Content/Integrations/Kubernetes_deployApplicationsConjur-k8s-Secrets.htm).
+
     b. For detailed setup instructions for Conjur Open Source, see [CyberArk Secrets Provider for Kubernetes for Conjur Open Source](https://docs.conjur.org/Latest/en/Content/Integrations/Kubernetes_deployApplicationsConjur-k8s-Secrets.htm).
-    
+
 ### Deploy a Local Dev Environment (K8s)
 
-You can now deploy a local development environment for Kubernetes using [Docker Desktop](https://www.docker.com/products/docker-desktop). Docker Desktop provides a convenient way to deploy and develop from your machine against a locally deployed cluster. 
+You can now deploy a local development environment for Kubernetes using [Docker Desktop](https://www.docker.com/products/docker-desktop). Docker Desktop provides a convenient way to deploy and develop from your machine against a locally deployed cluster.
 
 #### Prerequisites
 
@@ -64,25 +66,25 @@ You can now deploy a local development environment for Kubernetes using [Docker 
 1. Kubernetes enabled in Docker Desktop
 
     1. Navigate to Docker Preferences
-    
+
     1. Click on the Kubernetes tab and "Enable Kubernetes"
-    
-1. The Secrets Provider for K8s uses the [Kubernetes Conjur deploy](https://github.com/cyberark/kubernetes-conjur-deploy/blob/master/CONTRIBUTING.md) repository to deploy Conjur Enterprise / Conjur Open Source on Kubernetes. 
+
+1. The Secrets Provider for K8s uses the [Kubernetes Conjur deploy](https://github.com/cyberark/kubernetes-conjur-deploy/blob/master/CONTRIBUTING.md) repository to deploy Secrets Manager, Self-Hosted / Conjur Open Source on Kubernetes.
    By default, 2.0 Gib of memory is allocated to Docker on your computer.
-   
-   To successfully deploy a Conjur Enterprise cluster (Leader + Followers + Standbys), you will need to increase the memory limit to 6 Gib. To do so, perform the following:
-   
+
+   To successfully deploy a Secrets Manager, Self-Hosted cluster (Leader + Followers + Standbys), you will need to increase the memory limit to 6 Gib. To do so, perform the following:
+
    1. Navigate to Docker preferences
-   
+
    1. Click on "Resources" and slide the "Memory" bar to 6
-  
+
 1. If you intend to deploy the Secrets Provider via Helm, you will need to install the Helm CLI. See [here](https://helm.sh/docs/intro/install/) for instructions on how to do so.
 
 #### Deploy a local development environment
 
 To deploy a local development environment, perform the following:
 
-1. Run `./bin/build` to build the Secrets Provider image locally 
+1. Run `./bin/build` to build the Secrets Provider image locally
 
 1. Ensure you are in the proper local context. Otherwise, the deployment will not run successfully
 
@@ -94,10 +96,16 @@ Run `kubectl config use-context docker-desktop` to switch to a local context. Th
 
 1. Run `./bin/start --dev`, appending `--oss` or `--dap` according to the environment that needs to be deployed
 
-1. To view the pod(s) that were deployed and the Secrets Provider logs, run `kubectl get pods` and `kubectl logs <pod-name> -c cyberark-secrets-provider-for-k8s` respectively. 
-You can also view Conjur Enterprise / Conjur Open Source pod logs by running `kubectl get pods -n local-conjur` and `kubectl logs <conjur-pod-name> -n local-conjur`
+1. To view the pod(s) that were deployed and the Secrets Provider logs, run `kubectl get pods` and `kubectl logs <pod-name> -c cyberark-secrets-provider-for-k8s` respectively.
+You can also view Secrets Manager, Self-Hosted / Conjur Open Source pod logs by running `kubectl get pods -n local-conjur` and `kubectl logs <conjur-pod-name> -n local-conjur`
 
 1. If a cluster is already locally deployed run `./bin/start --dev --reload` to build your local changes and redeploy them to the local Secrets Provider K8s cluster
+
+#### Run integration tests against local development environment
+
+Assuming you have a running local cluster per the previous section and a valid kubeconfig, you can run the Golang-based integration tests by simply running `go test -timeout 0 -v ./e2e --tags=e2e` from the project root folder. This will execute the tests against the local cluster.
+
+NOTE: This assumes that the cluster is running with the default values in `bootstrap.env` for local DEV clusters.
 
 #### Clean-up
 
@@ -112,8 +120,6 @@ Note that for Deployments, you must first delete the Deployment and then the Pod
 #### Limitations
 
 - Currently, deploying a local dev environment only works against a local K8s cluster and not an Openshift one
-
-- At current, we cannot run our integration tests locally, only against a remote cluster
 
 ## Contributing
 
@@ -159,33 +165,19 @@ To follow [Go testing conventions](https://golang.org/pkg/cmd/go/internal/test/)
 1. Create tests.
 
 1. Run test suite, `./bin/test_unit`
-  
+
 #### Integration testing
 
-Our integration tests can be run against either a GKE / Openshift remote cluster. To do so, run `./bin/start` and add the proper flags. 
+Our integration tests can be run against either a GKE / Openshift remote cluster. To do so, run `./bin/start` and add the proper flags.
 
-To deploy Conjur Enterprise / Conjur Open Source, add the `--oss` / `--dap` flags to the above command. By default, the integration tests run Conjur Enterprise, so no flag is required.
+To deploy Secrets Manager, Self-Hosted / Conjur Open Source, add the `--oss` / `--dap` flags to the above command. By default, the integration tests run Secrets Manager, Self-Hosted, so no flag is required.
 To deploy on GKE, add `--gke`. For Openshift, use `--oldest` / `--current` / `--next`. By default, the integration tests run on a GKE cluster,
 so no flag is required.
 
 For example:
 
 - Deploy Conjur Open Source on GKE, run  `./bin/start --oss --gke`
-- Deploy Conjur Enterprise on Openshift, run  `./bin/start --dap --current`
-
-It is also possible to run a single test instead of the full suite. This can be done by running `./bin/start` with the
-flag `--test-prefix=<prefix>`. For example, running with the flag `--test-prefix=TEST_ID_18` will run only the test
-`TEST_ID_18_helm_multiple_provider_multiple_secrets.sh`, or run with the flag `--test-prefix=*1[789]` to run tests 17,18,19.
-
-When contributing new integration tests, perform the following:
-
-1. Navigate to the `test/test_case` folder
-
-1. Create a new test file with filename prefix `TEST_ID_<HIGHEST_NUMBER>_<TEST_NAME>`
-
-If your tests follow the above instructions, our scripts should grab your test additions and run it as our test suite. 
-
-That's it!
+- Deploy Secrets Manager, Self-Hosted on Openshift, run  `./bin/start --dap --current`
 
 #### Tracing
 
@@ -197,75 +189,92 @@ To view tracing output from Secrets Provider, you can enable Jaeger tracing.
     kubectl create namespace jaeger
     kubectl config set-context --current --namespace=jaeger
     helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
-    helm install jaeger jaegertracing/jaeger \
-      --set provisionDataStore.cassandra=false \
-      --set provisionDataStore.elasticsearch=true \
-      --set storage.type=elasticsearch \
-      --set elasticsearch.replicas=1 \
-      --set elasticsearch.minimumMasterNodes=1
+    helm install jaeger jaegertracing/jaeger
     ```
 
-    Wait a few minutes for the Jaeger instance to be ready. Then run the following commands to expose the
-    Jaeger UI on localhost:8080.
+    Wait about 5 minutes for the Jaeger instance to be ready (you can check the status with `kubectl get pods -n jaeger`).
+    Then run the following commands to expose the Jaeger UI on [localhost:8080](http://localhost:8080):
 
     ```bash
     pod_name=$(kubectl get pods --namespace jaeger -l "app.kubernetes.io/instance=jaeger,app.kubernetes.io/component=query" -o jsonpath="{.items[0].metadata.name}")
     kubectl port-forward --namespace jaeger $pod_name 8080:16686
     ```
 
-2. Clone the [cyberark/conjur-authn-k8s-client](https://github.com/cyberark/conjur-authn-k8s-client) repository which
-contains the E2E tests. Edit the template file for the tests. For example, you can add the following to the `annotations`
-section of `helm/conjur-app-deploy/charts/app-secrets-provider-p2f/templates/test_app_secrets_provider_p2f.yaml` for the
-push to file E2E test:
+2. Uncomment the following line in the template for the environment you are using in `bootstrap.env`,
+    for example, if using `SECRETS_MODE="p2f-rotation"` then you'll need to update
+    [deploy/dev/config/k8s/secrets-provider-p2f-rotation.sh.yml](deploy/dev/config/k8s/secrets-provider-p2f-rotation.sh.yml):
 
     ```yaml
     conjur.org/jaeger-collector-url: http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces
     ```
 
-    Now run the tests as usual with `cd bin/test-workflow && ./start -a secrets-provider-p2f`.
-
+    Now reload the dev environment with `./bin/start --dev --reload` and optionally run
+    the e2e tests with `go test -timeout 0 -v ./e2e --tags=e2e`.
 
 ## Releases
 
 Releases should be created by maintainers only. To create a tag and release,
 follow the instructions in this section.
 
-### Pre-requisites 
+### Pre-requisites
 
 1. Review the git log and ensure the [changelog](CHANGELOG.md) contains all
    relevant recent changes with references to GitHub issues or PRs, if possible.
-1. Review the changes since the last tag, and if the dependencies have changed
-   revise the [NOTICES](NOTICES.txt) to correctly capture the included
-   dependencies and their licenses / copyrights.
-1. Ensure that all documentation that needs to be written has been 
+1. Ensure that all documentation that needs to be written has been
    written by TW, approved by PO/Engineer, and pushed to the forward-facing documentation.
 1. Scan the project for vulnerabilities
 
+### Update the changelog and notices (if necessary)
+
+1. Update the `CHANGELOG.md` file with the new version and the changes that are included in the release.
+
+1. Update `NOTICES.txt`
+
+    ```sh-session
+    go install github.com/google/go-licenses@latest
+
+    # Verify that dependencies fit into supported licenses types.
+    # If there is new dependency having unsupported license, that license should be
+    # included to notices.tpl file in order to get generated in NOTICES.txt.
+    $(go env GOPATH)/bin/go-licenses check ./... \
+      --allowed_licenses="MIT,ISC,Apache-2.0,BSD-3-Clause,BSD-2-Clause" \
+      --ignore $(go list std | awk 'NR > 1 { printf(",") } { printf("%s",$0) } END { print "" }')
+
+    # If no errors occur, proceed to generate updated NOTICES.txt
+    $(go env GOPATH)/bin/go-licenses report ./... \
+      --template notices.tpl \
+      --ignore github.com/cyberark/secrets-provider-for-k8s \
+      --ignore $(go list std | awk 'NR > 1 { printf(",") } { printf("%s",$0) } END { print "" }') \
+      > NOTICES.txt
+    ```
+
 ### Update the version, changelog, and notices
+
 1. Create a new branch for the version bump.
 1. Based on the changelog content, determine the new version number.
 1. Update this version in the following files:
     1. [version.go](pkg/secrets/version.go)
     1. [Chart version](helm/secrets-provider/Chart.yaml)
-    1. [Default deployed version](helm/secrets-provider/values.yaml)
-    1. [Helm unit test for chart defaults](helm/secrets-provider/tests/secrets_provider_test.yaml)
-    1. [Test case hardcoded version](deploy/test/test_cases/TEST_ID_22_helm_rbac_defaults_taken_successfully.sh)
-1. Commit these changes - `Bump version to x.y.z` is an acceptable commit
+    2. [Helm unit test for chart defaults](helm/secrets-provider/tests/secrets_provider_test.yaml)
+2. Commit these changes - `Bump version to x.y.z` is an acceptable commit
    message - and open a PR for review.
-   
+
 ### Push Helm package
-1. Every build packages the Secrets Provider Helm chart for us. The package can be found under the 'Artifacts' tab of the Jenkins build and will resemble `secrets-provider-<version>.tgz`. 
+
+1. Every build packages the Secrets Provider Helm chart for us. The package can be found under the 'Artifacts' tab of the Jenkins build and will resemble `secrets-provider-<version>.tgz`.
 Navigate to the 'Artifacts' tab of the _tagged version_ build and save this file. You will need it for the next step.
 1. Clone the repo [helm-charts](https://github.com/cyberark/helm-charts) and do the following:
     1. Move the Helm package file created in the previous step to the *docs* folder in the `helm-charts` repo.
     1. Go to the `helm-charts` repo root folder and execute the `reindex.sh` script file located there.
     1. Create a PR with those changes.
-    
-                                                            
+
 ### Release and Promote
+
 1. Merging into main/master branches will automatically trigger a release. If successful, this release can be promoted at a later time.
 1. Jenkins build parameters can be utilized to promote a successful release or manually trigger aditional releases as needed.
 1. Reference the [internal automated release doc](https://github.com/conjurinc/docs/blob/master/reference/infrastructure/automated_releases.md#release-and-promotion-process) for releasing and promoting.
+
 ### Publish the Red Hat image
-1. Visit the [Red Hat project page](https://connect.redhat.com/project/4381831/view) once the images have been pushed 
+
+1. Visit the [Red Hat project page](https://connect.redhat.com/project/4381831/view) once the images have been pushed
 and manually choose to publish the latest release.

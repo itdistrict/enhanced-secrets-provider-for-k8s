@@ -1,4 +1,8 @@
 #!/usr/bin/env groovy
+@Library("product-pipelines-shared-library") _
+
+def productName = 'Secrets Provider for Kubernetes'
+def productTypeName = 'Conjur Enterprise'
 
 // Automated release, promotion and dependencies
 properties([
@@ -6,31 +10,70 @@ properties([
   release.addParams(),
   // Dependencies of the project that should trigger builds
   dependencies([
-    'cyberark/conjur-opentelemetry-tracer',
-    'cyberark/conjur-authn-k8s-client',
-    'cyberark/conjur-api-go'
+    'conjur-enterprise/conjur-opentelemetry-tracer',
+    'conjur-enterprise/conjur-authn-k8s-client',
+    'conjur-enterprise/conjur-api-go',
+    'conjur-enterprise/conjur'
   ])
 ])
 
 // Performs release promotion.  No other stages will be run
 if (params.MODE == "PROMOTE") {
-  release.promote(params.VERSION_TO_PROMOTE) { sourceVersion, targetVersion, assetDirectory ->
+  release.promote(params.VERSION_TO_PROMOTE) { infrapool, sourceVersion, targetVersion, assetDirectory ->
     // Any assets from sourceVersion Github release are available in assetDirectory
     // Any version number updates from sourceVersion to targetVersion occur here
     // Any publishing of targetVersion artifacts occur here
     // Anything added to assetDirectory will be attached to the Github Release
 
+    env.INFRAPOOL_PRODUCT_NAME = "${productName}"
+    env.INFRAPOOL_DD_PRODUCT_TYPE_NAME = "${productTypeName}"
+
+    def scans = [:]
+
+    scans["Scan main Docker image"] = {
+      runSecurityScans(infrapool,
+        image: "registry.tld/secrets-provider-for-k8s:${sourceVersion}",
+        buildMode: params.MODE,
+        branch: env.BRANCH_NAME)
+    }
+
+    scans["Scan redhat Docker image"] = {
+      runSecurityScans(infrapool,
+      image: "registry.tld/secrets-provider-for-k8s-redhat:${sourceVersion}",
+      buildMode: params.MODE,
+      branch: env.BRANCH_NAME)
+    }
+
+    parallel(scans)
+
     // Pull existing images from internal registry in order to promote
-    sh "docker pull registry.tld/secrets-provider-for-k8s:${sourceVersion}"
-    sh "docker pull registry.tld/secrets-provider-for-k8s-redhat:${sourceVersion}"
-    // Promote source version to target version.
-    sh "summon ./bin/publish --promote --source ${sourceVersion} --target ${targetVersion}"
+    infrapool.agentSh """
+      export PATH="release-tools/bin:${PATH}"
+      docker pull registry.tld/secrets-provider-for-k8s:${sourceVersion}
+      docker pull registry.tld/secrets-provider-for-k8s-redhat:${sourceVersion}
+      # Promote source version to target version.
+      summon ./bin/publish --promote --source ${sourceVersion} --target ${targetVersion}
+    """
+
+    dockerImages = "docker-image*.tar"
+    // Place the Docker image(s) onto the Jenkins agent and sign them
+    infrapool.agentGet from: "${assetDirectory}/${dockerImages}", to: "./"
+    signArtifacts patterns: ["${dockerImages}"]
+    // Copy the docker images and signed artifacts (.sig) back to
+    // infrapool and into the assetDirectory for release promotion
+    dockerImageLocation = pwd() + "/docker-image*.tar*"
+    infrapool.agentPut from: "${dockerImageLocation}", to: "${assetDirectory}"
+    // Resolve ownership issue before promotion
+    sh 'git config --global --add safe.directory ${PWD}'
   }
+
+  // Copy Github Enterprise release to Github
+  release.copyEnterpriseRelease(params.VERSION_TO_PROMOTE)
   return
 }
 
 pipeline {
-  agent { label 'executor-v2' }
+  agent { label 'conjur-enterprise-common-agent' }
 
   options {
     timestamps()
@@ -45,6 +88,15 @@ pipeline {
   environment {
     // Sets the MODE to the specified or autocalculated value as appropriate
     MODE = release.canonicalizeMode()
+
+    // Values to direct scan results to the right place in DefectDojo
+    INFRAPOOL_PRODUCT_NAME = "${productName}"
+    INFRAPOOL_PRODUCT_TYPE_NAME = "${productTypeName}"
+  }
+
+  triggers {
+    cron(getDailyCronString())
+    parameterizedCron(getWeeklyCronString("H(1-5)","%MODE=RELEASE"))
   }
 
   parameters {
@@ -56,6 +108,23 @@ pipeline {
   }
 
   stages {
+    stage('Scan for internal URLs') {
+      steps {
+        script {
+          detectInternalUrls()
+        }
+      }
+    }
+
+    stage('Get InfraPool ExecutorV2 Agent') {
+      steps {
+        script {
+          // Request ExecutorV2 agents for 1 hour(s)
+          INFRAPOOL_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "ExecutorV2", quantity: 1, duration: 2)[0]
+        }
+      }
+    }
+
     // Aborts any builds triggered by another project that wouldn't include any changes
     stage ("Skip build if triggering job didn't create a release") {
       when {
@@ -74,7 +143,7 @@ pipeline {
     stage('Validate') {
       parallel {
         stage('Changelog') {
-          steps { parseChangelog() }
+          steps { script { parseChangelog(INFRAPOOL_EXECUTORV2_AGENT_0) } }
         }
         stage('Log messages') {
           steps {
@@ -87,13 +156,19 @@ pipeline {
     // Generates a VERSION file based on the current build number and latest version in CHANGELOG.md
     stage('Validate Changelog and set version') {
       steps {
-        updateVersion("CHANGELOG.md", "${BUILD_NUMBER}")
+        updateVersion(INFRAPOOL_EXECUTORV2_AGENT_0, "CHANGELOG.md", "${BUILD_NUMBER}")
       }
     }
 
     stage('Get latest upstream dependencies') {
       steps {
-        updateGoDependencies('${WORKSPACE}/go.mod')
+        script {
+          updatePrivateGoDependencies("${WORKSPACE}/go.mod")
+          // Copy the vendor directory onto infrapool
+          INFRAPOOL_EXECUTORV2_AGENT_0.agentPut from: "vendor", to: "${WORKSPACE}"
+          INFRAPOOL_EXECUTORV2_AGENT_0.agentPut from: "go.*", to: "${WORKSPACE}"
+          INFRAPOOL_EXECUTORV2_AGENT_0.agentPut from: "/root/go", to: "/var/lib/jenkins/"
+        }
       }
     }
 
@@ -122,65 +197,83 @@ pipeline {
           branch 'main'
 
           // Always run the full pipeline on a version tag created during release
-          tag "v*"
+          buildingTag()
         }
       }
       stages {
         stage('Build client Docker image') {
           steps {
-            sh './bin/build'
+            script {
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/build'
+            }
+          }
+        }
+        stage('Package helm chart') {
+          steps {
+            script {
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './ci/jenkins_build'
+            }
+          }
+        }
+
+        // Allows for the promotion of images. Need to push before we do security scans
+        // since the Snyk scans pull from artifactory on a seprate executor node
+        stage('Push images to internal registry') {
+          steps {
+            script {
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/publish --internal'
+            }
           }
         }
 
         stage('Scan Docker Image') {
           parallel {
-            stage("Scan Docker Image for fixable issues") {
+            stage("Scan main image") {
               steps {
-                // Adding the false parameter to scanAndReport causes trivy to
-                // ignore vulnerabilities for which no fix is available. We'll
-                // only fail the build if we can actually fix the vulnerability
-                // right now.
-                scanAndReport('secrets-provider-for-k8s:latest', "HIGH", false)
+                script {
+                  VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentSh(returnStdout: true, script: 'cat VERSION')
+                }
+                runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0,
+                  image: "registry.tld/secrets-provider-for-k8s:${VERSION}",
+                  buildMode: params.MODE,
+                  branch: env.BRANCH_NAME)
               }
             }
-            stage("Scan Docker image for total issues") {
+           stage('Scan RedHat image') {
               steps {
-                // By default, trivy includes vulnerabilities with no fix. We
-                // want to know about that ASAP, but they shouldn't cause a
-                // build failure until we can do something about it. This call
-                // to scanAndReport should always be left as "NONE"
-                scanAndReport("secrets-provider-for-k8s:latest", "NONE", true)
+                script {
+                  VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentSh(returnStdout: true, script: 'cat VERSION')
+                }
+                runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0,
+                  image: "registry.tld/secrets-provider-for-k8s-redhat:${VERSION}",
+                  buildMode: params.MODE,
+                  branch: env.BRANCH_NAME)
               }
-            }
-            stage('Scan RedHat image for fixable issues') {
-              steps {
-                scanAndReport("secrets-provider-for-k8s-redhat:latest", "HIGH", false)
-              }
-            }
-    
-            stage('Scan RedHat image for all issues') {
-              steps {
-                scanAndReport("secrets-provider-for-k8s-redhat:latest", "NONE", true)
-              }
-            }
+           }
           }
         }
 
         stage('Run Unit Tests') {
           steps {
-            sh './bin/test_unit'
+            script {
+              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/test_unit'
+            }
           }
           post {
             always {
-              sh './bin/coverage'
-              junit 'junit.xml'
-              cobertura autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '70, 0, 0', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, lineCoverageTargets: '70, 0, 0', methodCoverageTargets: '70, 0, 0', onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false
-              ccCoverage("gocov", "--prefix github.com/cyberark/secrets-provider-for-k8s")
+              script {
+                INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './bin/coverage'
+                INFRAPOOL_EXECUTORV2_AGENT_0.agentStash name: 'coverage', includes: '*.xml'
+                unstash 'coverage'
+                junit 'junit.xml'
+                cobertura autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '70, 0, 0', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, lineCoverageTargets: '70, 0, 0', methodCoverageTargets: '70, 0, 0', onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false
+                codacy action: 'reportCoverage', filePath: "coverage.xml"
+              }
             }
           }
         }
-        
-        stage ("DAP Integration Tests on GKE") {
+
+        stage ("DAP Integration Tests on GKE/Openshift") {
           when { anyOf {
             branch 'main'
             expression { params.TEST_E2E == true }
@@ -189,39 +282,28 @@ pipeline {
             script {
               def tasks = [:]
               tasks["Kubernetes GKE, DAP"] = {
-                sh "./bin/start --docker --dap --gke"
+                INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/start --docker --dap --gke"
+              }
+              tasks["Openshift (Current), DAP"] = {
+                INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/start --docker --dap --current"
               }
               parallel tasks
             }
           }
         }
 
-        stage ("DAP Integration Tests on OpenShift") {
-          when {
-            // Run integration tests against OpenShift only on the main branch
-            //
-            // There's been a lot of flakiness around OpenShift, which has the negative effect of impeding developer velocity.
-            // Generally speaking the integration tests for this repository interact with the generic Kubernetes API, for
-            // scheduling and giving identity to workloads. There is no platform-specifc functionality within the secrets provider.
-            // We can reasonably assume that if a branch is green in GKE then it will likely be green for OpenShift.
-            // With that in mind, for now we have chosen to run Openshift integration tests only on the main branch while we figure
-            // out a better way to address the flakiness.
-            branch 'main'
-          }
+        stage ("DAP Integration Tests on OpenShift oldest/next") {
           steps {
             script {
               def tasks = [:]
               if ( params.TEST_OCP_OLDEST ) {
                 tasks["Openshift (Oldest), DAP"] = {
-                  sh "./bin/start --docker --dap --oldest"
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/start --docker --dap --oldest"
                 }
-              }
-              tasks["Openshift (Current), DAP"] = {
-                sh "./bin/start --docker --dap --current"
               }
               if ( params.TEST_OCP_NEXT ) {
                 tasks["Openshift (Next), DAP"] = {
-                  sh "./bin/start --docker --dap --next"
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/start --docker --dap --next"
                 }
               }
               parallel tasks
@@ -241,17 +323,10 @@ pipeline {
             script {
               def tasks = [:]
                 tasks["Kubernetes GKE, oss"] = {
-                  sh "./bin/start --docker --oss --gke"
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./bin/start --docker --oss --gke"
                 }
               parallel tasks
             }
-          }
-        }
-
-        // Allows for the promotion of images.
-        stage('Push images to internal registry') {
-          steps {
-            sh './bin/publish --internal'
           }
         }
 
@@ -261,26 +336,27 @@ pipeline {
               MODE == "RELEASE"
             }
           }
-          parallel {
-            stage('Push Images') {
+          stages {
+          stage('Release') {
               steps {
-                release { billOfMaterialsDirectory, assetDirectory, toolsDirectory ->
-                  // Publish release artifacts to all the appropriate locations
-                  // Copy any artifacts to assetDirectory to attach them to the Github release
+                script {
+                  release(INFRAPOOL_EXECUTORV2_AGENT_0) { billOfMaterialsDirectory, assetDirectory, toolsDirectory ->
+                    // Publish release artifacts to all the appropriate locations
+                    // Copy any artifacts to assetDirectory to attach them to the Github release
 
-                  //    // Create Go application SBOM using the go.mod version for the golang container image
-                  sh """go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --main "cmd/secrets-provider/" --output "${billOfMaterialsDirectory}/go-app-bom.json" """
-                  //    // Create Go module SBOM
-                  sh """go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --output "${billOfMaterialsDirectory}/go-mod-bom.json" """
-                  sh 'summon ./bin/publish --edge'
+                    // Copy helm chart to assetDirectory
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp -a helm-artifacts/*.tgz ${assetDirectory}"
+                    // Create Go application SBOM using the go.mod version for the golang container image
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh """export PATH="${toolsDirectory}/bin:${PATH}" && go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --main "cmd/secrets-provider/" --output "${billOfMaterialsDirectory}/go-app-bom.json" """
+                    // Create Go module SBOM
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh """export PATH="${toolsDirectory}/bin:${PATH}" && go-bom --tools "${toolsDirectory}" --go-mod ./go.mod --image "golang" --output "${billOfMaterialsDirectory}/go-mod-bom.json" """
+                    // Publish will save docker images to the executing directory
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'summon ./bin/publish --edge'
+                    // Copy the docker images into the assetDirectory for signing in the promote step
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp -a docker-image*.tar ${assetDirectory}"
+
                   }
                 }
-              }
-            stage('Package artifacts') {
-              steps {
-                sh 'ci/jenkins_build'
-
-                archiveArtifacts artifacts: "helm-artifacts/", fingerprint: false, allowEmptyArchive: true
               }
             }
           }
@@ -292,18 +368,11 @@ pipeline {
   post {
     always {
       archiveArtifacts artifacts: "deploy/output/*.txt", fingerprint: false, allowEmptyArchive: true
-    }
-    success {
-      cleanupAndNotify(currentBuild.currentResult)
-    }
-    unsuccessful {
-      script {
-        if (env.BRANCH_NAME == 'main') {
-          cleanupAndNotify(currentBuild.currentResult, "#development", "@secrets-provider-for-k8s-owners")
-        } else {
-          cleanupAndNotify(currentBuild.currentResult, "#development")
-        }
-      }
+      releaseInfraPoolAgent(".infrapool/release_agents")
+
+      // Resolve ownership issue before running infra post hook
+      sh 'git config --global --add safe.directory ${PWD}'
+      infraPostHook()
     }
   }
 }

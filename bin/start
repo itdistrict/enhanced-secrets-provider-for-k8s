@@ -49,12 +49,14 @@ while true ; do
     --dev ) DEV=true ; shift ;;
     --test-prefix=* ) TEST_NAME_PREFIX="${1#*=}" ; export TEST_NAME_PREFIX; shift ;;
     --reload ) RELOAD_ENV=true ; shift ;;
+    --template=* ) TEMPLATE_OVERRIDE="${1#*=}" ; export TEMPLATE_OVERRIDE; shift ;;
     --oss ) CONJUR_DEPLOYMENT=oss ; shift ;;
     --dap ) CONJUR_DEPLOYMENT=dap ; shift ;;
     --gke ) SUMMON_ENV=gke ; shift ;;
     --oldest ) SUMMON_ENV=oldest ; shift ;;
     --current ) SUMMON_ENV=current ; shift ;;
     --next ) SUMMON_ENV=next ; shift ;;
+    --template=* ) TEMPLATE_OVERRIDE="${1#*=}" ; export TEMPLATE_OVERRIDE; shift ;;
     -h | --help ) print_help ; shift ;;
      * ) if [ -z "$1" ]; then break; else echo "$1 is not a valid option"; exit 1; fi;;
   esac
@@ -69,9 +71,15 @@ export RUN_IN_DOCKER
 export CONJUR_DEPLOYMENT
 export DEV
 export SUMMON_ENV
+export TEMPLATE_OVERRIDE
+
+echo $TEMPLATE_OVERRIDE
 
 # summon environment variable
 export CONJUR_MAJOR_VERSION=5
+
+# make sure we are in the project root
+cd $(git rev-parse --show-toplevel)
 
 source bootstrap.env
 

@@ -24,11 +24,13 @@ main() {
 }
 
 buildTestRunnerImage() {
+  pushd ..
   docker build --tag $TEST_RUNNER_IMAGE:$CONJUR_NAMESPACE_NAME \
-    --file test/Dockerfile \
+    --file Dockerfile.e2e \
     --build-arg OPENSHIFT_CLI_URL=$OPENSHIFT_CLI_URL \
     --build-arg KUBECTL_CLI_URL=$KUBECTL_CLI_URL \
     .
+  popd
 }
 
 deployConjur() {
@@ -38,14 +40,14 @@ deployConjur() {
   docker pull $CONJUR_APPLIANCE_IMAGE
 
   git clone --single-branch --branch master \
-      git@github.com:cyberark/kubernetes-conjur-deploy \
+      https://github.com/cyberark/kubernetes-conjur-deploy.git \
       kubernetes-conjur-deploy-$UNIQUE_TEST_ID
 
   cmd="./start"
   if [ $CONJUR_DEPLOYMENT = "oss" ]; then
       cmd="$cmd --oss"
   fi
-  runDockerCommand "cd ./kubernetes-conjur-deploy-$UNIQUE_TEST_ID && DEBUG=true $cmd"
+  runDockerCommand "cd ./kubernetes-conjur-deploy-$UNIQUE_TEST_ID && LOG_LEVEL=debug $cmd"
 }
 
 deployTest() {

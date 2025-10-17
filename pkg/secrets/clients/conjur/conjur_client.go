@@ -16,6 +16,7 @@ The name ConjurClient also improves readability as Client can be ambiguous.
 type ConjurClient interface {
 	RetrieveBatchSecretsSafe([]string) (map[string][]byte, error)
 	RetrieveSecret(string) ([]byte, error)
+	Resources(filter *conjurapi.ResourceFilter) (resources []map[string]interface{}, err error)
 }
 
 func NewConjurClient(tokenData []byte) (ConjurClient, error) {
@@ -24,6 +25,7 @@ func NewConjurClient(tokenData []byte) (ConjurClient, error) {
 	if err != nil {
 		return nil, log.RecordedError(messages.CSPFK031E, err.Error())
 	}
+	config.CredentialStorage = conjurapi.CredentialStorageNone
 
 	client, err := conjurapi.NewClientFromToken(config, string(tokenData))
 	if err != nil {

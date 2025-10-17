@@ -74,6 +74,7 @@ const (
 	// RemoveDeletedSecretsKey is the annotaion key for enabling removing deleted secrets
 	RemoveDeletedSecretsKey = "conjur.org/remove-deleted-secrets-enabled"
 	debugLoggingKey         = "conjur.org/debug-logging"
+	logLevelKey             = "conjur.org/log-level"
 	logTracesKey            = "conjur.org/log-traces"
 	jaegerCollectorUrl      = "conjur.org/jaeger-collector-url"
 )
@@ -91,6 +92,7 @@ var secretsProviderAnnotations = map[string]annotationRestraints{
 	SecretsRefreshEnabledKey:  {TYPEBOOL, []string{}},
 	RemoveDeletedSecretsKey:   {TYPEBOOL, []string{}},
 	debugLoggingKey:           {TYPEBOOL, []string{}},
+	logLevelKey:               {TYPESTRING, []string{"debug", "info", "warn", "error"}},
 	logTracesKey:              {TYPEBOOL, []string{}},
 	jaegerCollectorUrl:        {TYPESTRING, []string{}},
 	RetrievalTypeKey:		   {TYPESTRING, []string{}},
@@ -104,7 +106,7 @@ var pushToFileAnnotationPrefixes = map[string]annotationRestraints{
 	"conjur.org/conjur-secrets.":             {TYPESTRING, []string{}},
 	"conjur.org/conjur-secrets-policy-path.": {TYPESTRING, []string{}},
 	"conjur.org/secret-file-path.":           {TYPESTRING, []string{}},
-	"conjur.org/secret-file-format.":         {TYPESTRING, []string{"yaml", "json", "dotenv", "bash", "template"}},
+	"conjur.org/secret-file-format.":         {TYPESTRING, []string{"yaml", "json", "dotenv", "bash", "properties", "template"}},
 	"conjur.org/secret-file-permissions.":    {TYPESTRING, []string{}},
 	"conjur.org/secret-file-template.":       {TYPESTRING, []string{}},
 }

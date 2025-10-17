@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -42,6 +41,7 @@ var envAnnotationsConversion = map[string]string{
 	"RETRY_COUNT_LIMIT":      "conjur.org/retry-count-limit",
 	"RETRY_INTERVAL_SEC":     "conjur.org/retry-interval-sec",
 	"DEBUG":                  "conjur.org/debug-logging",
+	"LOG_LEVEL":              "conjur.org/log-level",
 	"JAEGER_COLLECTOR_URL":   "conjur.org/jaeger-collector-url",
 	"LOG_TRACES":             "conjur.org/log-traces",
 	"JWT_TOKEN_PATH":         "conjur.org/jwt-token-path",
@@ -170,7 +170,7 @@ func secretRetriever(
 	_, span := tracer.Start(ctx, "Gather authenticator config")
 	defer span.End()
 
-	authnConfig, err := authnConfigProvider.NewConfigFromCustomEnv(ioutil.ReadFile, customEnv)
+	authnConfig, err := authnConfigProvider.NewConfigFromCustomEnv(os.ReadFile, customEnv)
 	if err != nil {
 		span.RecordErrorAndSetStatus(err)
 		log.Error(messages.CSPFK008E)

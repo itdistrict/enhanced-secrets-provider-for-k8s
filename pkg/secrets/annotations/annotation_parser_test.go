@@ -3,7 +3,6 @@ package annotations
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +14,7 @@ import (
 // that does a no-op for file closing, and returns specified content
 // for read operations.
 func mockReadCloser(contents string) io.ReadCloser {
-	return ioutil.NopCloser(strings.NewReader(contents))
+	return io.NopCloser(strings.NewReader(contents))
 }
 
 func mockFileOpenerGenerator(store map[string]io.ReadCloser) fileOpener {
@@ -110,7 +109,7 @@ conjur.org/secrets-destination="k8s_secrets"
 conjur.org/k8s-secrets="- k8s-secret-1\n- k8s-secret-2\n"
 conjur.org/retry-count-limit="10"
 conjur.org/retry-interval-sec="5"
-conjur.org/debug-logging="true"
+conjur.org/log-level="debug"
 conjur.org/conjur-secrets.this-group="- test/url\n- test-password: test/password\n- test-username: test/username\n"
 conjur.org/secret-file-path.this-group="this-relative-path"
 conjur.org/secret-file-format.this-group="yaml"`,
@@ -122,7 +121,7 @@ conjur.org/secret-file-format.this-group="yaml"`,
 				"conjur.org/k8s-secrets":                   "- k8s-secret-1\n- k8s-secret-2\n",
 				"conjur.org/retry-count-limit":             "10",
 				"conjur.org/retry-interval-sec":            "5",
-				"conjur.org/debug-logging":                 "true",
+				"conjur.org/log-level":                     "debug",
 				"conjur.org/conjur-secrets.this-group":     "- test/url\n- test-password: test/password\n- test-username: test/username\n",
 				"conjur.org/secret-file-path.this-group":   "this-relative-path",
 				"conjur.org/secret-file-format.this-group": "yaml",

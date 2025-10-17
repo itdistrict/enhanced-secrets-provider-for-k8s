@@ -37,6 +37,10 @@ $cli_with_timeout "delete role another-secrets-provider-role --ignore-not-found=
 
 $cli_with_timeout "delete secret test-k8s-secret --ignore-not-found=true"
 
+$cli_with_timeout "delete secret test-k8s-secret-fetch-all --ignore-not-found=true"
+
+$cli_with_timeout "delete secret test-k8s-secret-fetch-all-base64 --ignore-not-found=true"
+
 $cli_with_timeout "delete secret another-test-k8s-secret --ignore-not-found=true"
 
 $cli_with_timeout "delete serviceaccount ${APP_NAMESPACE_NAME}-sa --ignore-not-found=true"
@@ -47,13 +51,8 @@ $cli_with_timeout "delete rolebinding secrets-access-role-binding --ignore-not-f
 
 $cli_with_timeout "delete rolebinding another-secrets-provider-role-binding --ignore-not-found=true"
 
-if [ "${PLATFORM}" = "kubernetes" ]; then
-  $cli_with_timeout "delete deployment test-env --ignore-not-found=true"
-  $cli_with_timeout "delete deployment another-test-env --ignore-not-found=true"
-elif [ "${PLATFORM}" = "openshift" ]; then
-  $cli_with_timeout "delete deploymentconfig test-env --ignore-not-found=true"
-  $cli_with_timeout "delete deploymentconfig another-test-env --ignore-not-found=true"
-fi
+$cli_with_timeout "delete deployment test-env --ignore-not-found=true"
+$cli_with_timeout "delete deployment another-test-env --ignore-not-found=true"
 
 $cli_with_timeout "delete configmap conjur-master-ca-env --ignore-not-found=true"
 
