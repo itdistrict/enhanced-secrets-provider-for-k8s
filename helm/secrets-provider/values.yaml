@@ -12,7 +12,7 @@ rbac:
 
 secretsProvider:
   image: docker.io/cyberark/secrets-provider-for-k8s
-  tag: 1.5.1
+  tag: latest
   imagePullPolicy: IfNotPresent
   # Container name
   name: cyberark-secrets-provider-for-k8s
@@ -62,17 +62,17 @@ environment:
     # This setting is required if 'conjurConnConfigMap' is not set.
     #
     # account:
-    
+
     # URL of service defined for DAP Follower/Conjur.
     # This setting is required if 'conjurConnConfigMap' is not set.
     #
     # applianceUrl:
- 
+
     # URL for the Kubernetes authenticator with which the Secrets Provider will authenticate.
     # This setting is required if 'conjurConnConfigMap' is not set.
     #
     # authnUrl:
- 
+
     sslCertificate:
       # Name of ConfigMap that holds the public SSL certificate required for connecting to Follower/Conjur.
       name: cert-config-map

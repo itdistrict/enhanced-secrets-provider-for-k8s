@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -530,7 +529,7 @@ func TestNewSecretGroups(t *testing.T) {
 
 	t.Run("custom template - test template file base path", func(t *testing.T) {
 		// Create temp directory
-		dir, err := ioutil.TempDir("", "")
+		dir, err := os.MkdirTemp("", "")
 		assert.NoError(t, err)
 		defer os.Remove(dir)
 		// Write sample template file
@@ -779,6 +778,41 @@ var pushToFileWithDepsTestCases = []pushToFileWithDepsTestCase{
 		},
 	},
 	{
+		description: "fetch all",
+		group: modifyGoodGroup(func(group SecretGroup) SecretGroup {
+			group.SecretSpecs = []SecretSpec{
+				{
+					Path: "*",
+				},
+			}
+			return group
+		}),
+		overrideSecrets: []*Secret{
+			{
+				Alias: "alias1",
+				Value: "value-path1",
+			},
+			{
+				Alias: "alias2",
+				Value: "value-path2",
+			},
+		},
+		assert: func(
+			t *testing.T,
+			spyOpenWriteCloser openWriteCloserSpy,
+			closableBuf *ClosableBuffer,
+			spyPushToWriter pushToWriterSpy,
+			updated bool,
+			err error,
+		) {
+			// Assertions
+			if !assert.NoError(t, err) {
+				return
+			}
+			assert.Equal(t, 2, len(spyPushToWriter.args.groupSecrets))
+		},
+	},
+	{
 		description: "file template precedence",
 		group: modifyGoodGroup(func(group SecretGroup) SecretGroup {
 			group.FileTemplate = "setfiletemplate"
@@ -887,7 +921,7 @@ func TestSecretGroup_pushToFileWithDeps(t *testing.T) {
 
 func TestSecretGroup_PushToFile(t *testing.T) {
 	// Create temp directory
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.Remove(dir)
 
@@ -937,7 +971,7 @@ func TestSecretGroup_PushToFile(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Read file contents and metadata
-			contentBytes, err := ioutil.ReadFile(absoluteFilePath)
+			contentBytes, err := os.ReadFile(absoluteFilePath)
 			assert.NoError(t, err)
 			f, err := os.Stat(absoluteFilePath)
 			assert.NoError(t, err)

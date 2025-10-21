@@ -22,18 +22,15 @@ set +a
 
 times=1
 
-for c in {1..$times}
-do
-  for filename in ./$TEST_NAME_PREFIX*.sh; do
-    announce "Running '$filename'."
-    ./test_case_setup.sh
-    $filename
-    ../../teardown_resources.sh
-    announce "Test '$filename' ended successfully"
-  done
-done
+announce "Preparing to run E2E tests"
 
-ENV_FILE=printenv.debug
-if [[ -f "$ENV_FILE" ]]; then
-    rm $ENV_FILE
-fi
+# Uncomment for Golang-based tests
+./test_case_setup.sh
+create_secret_access_role
+create_secret_access_role_binding
+deploy_env
+pushd /secrets-provider-for-k8s
+go test -v -tags e2e -timeout 0 ./e2e/...
+popd
+
+../../teardown_resources.sh

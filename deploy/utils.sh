@@ -128,8 +128,8 @@ runDockerCommand() {
       -v /var/run/docker.sock:/var/run/docker.sock \
       -v ~/.config:/root/.config \
       -v "$PWD/../helm":/helm \
-      -v "$PWD":/src \
-      -w /src \
+      -v "$PWD/..":/src \
+      -w /src/deploy \
       $TEST_RUNNER_IMAGE:$CONJUR_NAMESPACE_NAME \
       bash -c "
         ./platform_login.sh
@@ -168,10 +168,9 @@ runDockerCommand() {
       -e SUMMON_ENV \
       -e IMAGE_PULL_SECRET \
       -v /var/run/docker.sock:/var/run/docker.sock \
-      -v ~/.config:/root/.config \
       -v "$PWD/../helm":/helm \
-      -v "$PWD":/src \
-      -w /src \
+      -v "$PWD/..":/src \
+      -w /src/deploy \
       $TEST_RUNNER_IMAGE:$CONJUR_NAMESPACE_NAME \
       bash -c "
         ./platform_login.sh
@@ -216,7 +215,7 @@ fetch_ssl_from_conjur() {
   cert_location="/opt/conjur/etc/ssl/conjur.pem"
   if [ "$CONJUR_DEPLOYMENT" = "oss" ]; then
     selector="app=conjur-cli"
-    export cert_location="/root/conjur-server.pem"
+    export cert_location="/home/cli/conjur-server.pem"
   fi
 
   export conjur_pod_name="$(get_pod_name "$CONJUR_NAMESPACE_NAME" "$selector")"
@@ -286,6 +285,7 @@ fill_helm_chart() {
       -e "s#{{ TAG }}# ${TAG:-"latest"}#g" \
       -e "s#{{ LABELS }}# ${LABELS:-"app: test-helm"}#g" \
       -e "s#{{ DEBUG }}# ${DEBUG:-"false"}#g" \
+      -e "s#{{ LOG_LEVEL }}# ${LOG_LEVEL:-"info"}#g" \
       -e "s#{{ RETRY_COUNT_LIMIT }}# ${RETRY_COUNT_LIMIT:-"5"}#g" \
       -e "s#{{ RETRY_INTERVAL_SEC }}# ${RETRY_INTERVAL_SEC:-"5"}#g" \
       -e "s#{{ IMAGE_PULL_SECRET }}# ${IMAGE_PULL_SECRET:-""}#g" \
@@ -414,13 +414,13 @@ load_policy() {
   popd
   
   conjur_cli_pod=$(get_conjur_cli_pod_name)
-  $cli_with_timeout "exec $conjur_cli_pod -- rm -rf /policy"
-  $cli_with_timeout "cp ../../policy $conjur_cli_pod:/policy"
+  $cli_with_timeout "exec $conjur_cli_pod -- rm -rf /tmp/policy"
+  $cli_with_timeout "cp ../../policy $conjur_cli_pod:/tmp/policy"
 
   $cli_with_timeout "exec $(get_conjur_cli_pod_name) -- \
-    conjur policy update -b root -f \"/policy/generated/$APP_NAMESPACE_NAME.$filename.yml\""
+    conjur policy update -b root -f \"/tmp/policy/generated/$APP_NAMESPACE_NAME.$filename.yml\""
 
-  $cli_with_timeout "exec $conjur_cli_pod -- rm -rf ./policy"
+  $cli_with_timeout "exec $conjur_cli_pod -- rm -rf /tmp/policy"
 
   set_namespace $APP_NAMESPACE_NAME
 }
@@ -590,6 +590,7 @@ wait_for_job() {
 
 deploy_env() {
   export SECRETS_MODE=${SECRETS_MODE:-"k8s"}
+  export TEMPLATE_OVERRIDE=${TEMPLATE_OVERRIDE:-""}
   local yaml_template_name="test-env"
 
   case $SECRETS_MODE in
@@ -627,6 +628,11 @@ deploy_env() {
       ;;
   esac
 
+  if [ ! -z "$TEMPLATE_OVERRIDE" ]
+  then
+    yaml_template_name="$TEMPLATE_OVERRIDE"
+  fi
+
   generate_manifest_and_deploy $yaml_template_name
 }
 
@@ -648,11 +654,7 @@ generate_manifest_and_deploy() {
     expected_num_replicas=`$CONFIG_DIR/$yaml_template_name.sh.yml |  awk '/replicas:/ {print $2}' `
     
     # Deployment (Deployment for k8s and DeploymentConfig for Openshift) might fail on error flows, even before creating the pods. If so, re-deploy.
-    if [[ "$PLATFORM" = "kubernetes" ]]; then
-        $cli_with_timeout "get deployment $deployment_name -o jsonpath={.status.replicas} | grep '^${expected_num_replicas}$'|| $cli_without_timeout rollout latest deployment $deployment_name"
-    elif [[ "$PLATFORM" = "openshift" ]]; then
-        $cli_with_timeout "get dc/$deployment_name -o jsonpath={.status.replicas} | grep '^${expected_num_replicas}$'|| $cli_without_timeout rollout latest dc/$deployment_name"
-    fi
+    $cli_with_timeout "get deployment $deployment_name -o jsonpath={.status.replicas} | grep '^${expected_num_replicas}$'|| $cli_without_timeout rollout latest deployment $deployment_name"
 
     echo "Expecting $expected_num_replicas deployed pods"
     $cli_with_timeout "get pods --namespace=$APP_NAMESPACE_NAME --selector app=$deployment_name --no-headers | wc -l | grep $expected_num_replicas"

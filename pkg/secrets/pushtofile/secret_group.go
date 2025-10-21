@@ -2,7 +2,7 @@ package pushtofile
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -204,7 +204,7 @@ func (sg *SecretGroup) validate() []error {
 			dummySecrets = append(dummySecrets, &Secret{Alias: secretSpec.Alias, Value: "REDACTED"})
 		}
 
-		_, err := pushToWriter(ioutil.Discard, groupName, fileTemplate, dummySecrets)
+		_, err := pushToWriter(io.Discard, groupName, fileTemplate, dummySecrets)
 		if err != nil {
 			return []error{fmt.Errorf(
 				`unable to use file template for secret group %q: %s`,
@@ -221,6 +221,12 @@ func validateSecretsAgainstSpecs(
 	secrets []*Secret,
 	specs []SecretSpec,
 ) error {
+	// If in "Fetch All" mode, then the number of specs will always be 1
+	// while the number of secrets will be variable. Skip this validation.
+	if len(specs) == 1 && specs[0].Path == "*" {
+		return nil
+	}
+
 	if len(secrets) != len(specs) {
 		return fmt.Errorf(
 			"number of secrets (%d) does not match number of secret specs (%d)",

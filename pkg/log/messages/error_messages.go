@@ -44,6 +44,7 @@ const CSPFK027E string = "CSPFK027E Failed to update Kubernetes Secrets map with
 const CSPFK028E string = "CSPFK028E Unable to update Kubernetes Secret '%s'"
 const CSPFK030E string = "CSPFK020E Failed to retrieve Kubernetes Namespace"
 const CSPFK063E string = "CSPFK063E Unable to delete Kubernetes Secret"
+const CSPFK067E string = "CSPFK067E Normalized secret names produced a duplicate secret key '%s'. Leaving first value in place."
 
 // DAP/Conjur
 const CSPFK031E string = "CSPFK031E Failed to load DAP/Conjur config. Reason: %s"
@@ -89,3 +90,7 @@ const CSPFK061E string = "CSPFK061E Could not write content to temporary file fo
 // Secrets Decoding
 const CSPFK064E string = "CSPFK064E Failed to decode secret '%s' with '%s' content-type. Reason: %s"
 const CSPFK065E string = "CSPFK065E Secret group %s: the content-type of %s is invalid"
+
+// Fetch All
+const CSPFK066E string = "CSPFK066E Stopped fetching additional secrets after %d secrets were fetched"
+const CSPFK068E string = "CSPFK068E Retrieved secrets did not include secret '%s' requested by secret group '%s'"
